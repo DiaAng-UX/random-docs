@@ -1,0 +1,810 @@
+<meta charset="utf-8">
+<title>Right-Side Config Panel — Standardization Audit · 2026-06-25</title>
+<style>
+  :root{
+    --ink:#15171a; --ink-2:#3a3f47; --muted:#6b7280; --line:#e5e7eb; --line-2:#d1d5db;
+    --bg:#fbfbfc; --card:#ffffff; --accent:#3b5bdb; --accent-soft:#eef1fd;
+    --warn:#b54708; --warn-soft:#fef6ee; --good:#1f7a4d; --good-soft:#eefaf2;
+    --bad:#b42318; --bad-soft:#fef3f2; --code:#f3f4f6;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:0 28px 120px}
+  header.masthead{
+    max-width:1040px;margin:0 auto;padding:54px 28px 30px;
+  }
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 12px}
+  h1{font-size:34px;line-height:1.16;letter-spacing:-.02em;margin:0 0 14px;font-weight:780}
+  .lede{font-size:17px;color:var(--ink-2);max-width:74ch;margin:0 0 22px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:5px 12px;color:var(--ink-2)}
+  .chip b{color:var(--ink);font-weight:680}
+  h2{font-size:25px;letter-spacing:-.015em;margin:64px 0 6px;padding-top:18px;border-top:2px solid var(--ink);font-weight:760}
+  h2 .pt{color:var(--muted);font-weight:600;font-size:15px;letter-spacing:0;margin-left:2px}
+  h3{font-size:18.5px;margin:38px 0 8px;font-weight:700;letter-spacing:-.01em}
+  h4{font-size:14px;margin:22px 0 6px;font-weight:720;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}
+  p{margin:10px 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,.mono{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+  .ev{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--muted);
+    background:var(--code);border-radius:5px;padding:1px 6px;white-space:nowrap}
+  .section-intro{color:var(--ink-2);max-width:78ch}
+  /* TOC */
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 22px;margin:30px 0 6px}
+  nav.toc h4{margin:0 0 10px}
+  nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:34px}
+  nav.toc li{margin:3px 0;break-inside:avoid}
+  /* tables */
+  .tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);margin:16px 0}
+  table{border-collapse:collapse;width:100%;min-width:720px;background:var(--card);font-size:13.5px}
+  th,td{text-align:left;vertical-align:top;padding:10px 13px;border-bottom:1px solid var(--line)}
+  thead th{background:#f7f8fa;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:700;
+    position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  td.dim{font-weight:680;color:var(--ink);white-space:nowrap}
+  .yes{color:var(--good);font-weight:680}
+  .no{color:var(--bad);font-weight:680}
+  .partial{color:var(--warn);font-weight:680}
+  /* callouts */
+  .impact{border-left:3px solid var(--warn);background:var(--warn-soft);padding:11px 15px;border-radius:0 8px 8px 0;margin:14px 0;font-size:13.5px}
+  .impact b{color:var(--warn)}
+  .note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:11px 15px;border-radius:0 8px 8px 0;margin:14px 0;font-size:13.5px}
+  .infer{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--warn);background:var(--warn-soft);border:1px solid #f3d9bf;border-radius:5px;padding:1px 7px;margin-right:6px;vertical-align:1px}
+  .open-q{border:1px dashed var(--accent);background:#f6f8ff;border-radius:8px;padding:13px 16px;margin:14px 0}
+  .open-q .tag{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
+  /* screenshot placeholder */
+  .shot{border:2px dashed var(--line-2);background:repeating-linear-gradient(45deg,#fafafa,#fafafa 10px,#f4f4f5 10px,#f4f4f5 20px);
+    border-radius:8px;padding:18px;margin:16px 0;color:var(--ink-2);font-size:13px}
+  .shot .lbl{font-weight:800;color:var(--bad);font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:5px}
+  .shot .cap{color:var(--muted);font-size:12px;margin-top:6px}
+  /* exec summary list */
+  ol.ranked{counter-reset:rk;list-style:none;padding:0;margin:18px 0}
+  ol.ranked>li{counter-increment:rk;position:relative;background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:15px 18px 15px 60px;margin:11px 0}
+  ol.ranked>li::before{content:counter(rk);position:absolute;left:16px;top:14px;width:28px;height:28px;border-radius:7px;
+    background:var(--ink);color:#fff;font-weight:760;font-size:14px;display:flex;align-items:center;justify-content:center}
+  ol.ranked .t{font-weight:720}
+  ol.ranked .sev{float:right;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+    padding:2px 8px;border-radius:5px}
+  .sev-hi{background:var(--bad-soft);color:var(--bad)} .sev-md{background:var(--warn-soft);color:var(--warn)}
+  .sev-lo{background:var(--accent-soft);color:var(--accent)}
+  /* wireframe figures */
+  figure{margin:20px 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--card)}
+  figure svg{display:block;width:100%;height:auto;background:#fff}
+  figcaption{font-size:12.5px;color:var(--ink-2);padding:11px 16px;border-top:1px solid var(--line);background:#fafafb}
+  figcaption b{color:var(--ink)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr} nav.toc ol{columns:1}}
+  .legend{font-size:12px;color:var(--muted);margin:6px 0 0}
+  hr.soft{border:none;border-top:1px solid var(--line);margin:30px 0}
+  .phase{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0}
+  .phase .ph-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .phase h3{margin:0;font-size:16.5px}
+  .effort{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:3px 9px;border-radius:6px}
+  .e-quick{background:var(--good-soft);color:var(--good)} .e-mod{background:var(--warn-soft);color:var(--warn)} .e-large{background:var(--bad-soft);color:var(--bad)}
+  .small{font-size:12.5px;color:var(--muted)}
+  ul.tight{margin:8px 0;padding-left:20px} ul.tight li{margin:4px 0}
+  .evt{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12px;font-weight:600;color:var(--ink)}
+  .kbd{font-family:"SF Mono",Menlo,monospace;font-size:11px;background:#f3f4f6;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:1px 5px}
+</style>
+
+<header class="masthead">
+  <p class="eyebrow">FlowX Designer · UX Standardization Audit</p>
+  <h1>Right-Side Configuration Panels:<br>Cross-Tool Consistency Audit</h1>
+  <p class="lede">A standardization review of every right-hand configuration panel a designer touches while moving
+    between tools — UI Designer, Process Designer, and the Data Model builder. The goal: one predictable panel
+    grammar, so muscle memory carries from one surface to the next.</p>
+  <div class="meta">
+    <span class="chip">📅 <b>2026-06-25</b></span>
+    <span class="chip">🌿 Branch <b>prototype/process-side-panel</b> (as-is)</span>
+    <span class="chip">🧭 Scope <b>3 panel families · 5 contexts</b></span>
+    <span class="chip">🔬 Evidence <b>static code read</b></span>
+    <span class="chip">📸 Screenshots <b>placeholders (live capture skipped)</b></span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="note">
+  <b>How to read this report.</b> Every behavioral claim is written as something a user can <i>see or feel</i>, with the
+  code location in parentheses as backing evidence — e.g. <span class="ev">node-config.component.ts:256</span>. Where a
+  judgement is an inference rather than a directly-observed fact it is tagged <span class="infer">inference</span>.
+  Where a behavior can't be settled from static code (perceived latency, animation feel), the report says so instead
+  of guessing.
+</div>
+
+<div class="impact" style="border-left-color:var(--accent);background:var(--accent-soft)">
+  <b style="color:var(--accent)">Two scoping facts that shape everything below.</b>
+  <ul class="tight" style="margin-bottom:0">
+    <li><b>This is the prototype branch, audited as-is.</b> The Process Designer panel here is the new
+      <span class="ev">side-panel-prototype</span> (right-side, resizable, autosave). All three panels currently carry a
+      floating <b>“Prototype settings”</b> A/B toggle that flips sub-editors between <i>inline</i> and <i>overlay</i>.
+      Findings reflect that experimental state.</li>
+    <li><b>Live screenshots were intentionally skipped</b> (no saved auth session; capturing would require an interactive
+      login). Every image slot is a labelled <span style="color:var(--bad);font-weight:700">[SCREENSHOT NEEDED]</span>
+      placeholder describing exactly what to capture and from where.</li>
+  </ul>
+</div>
+
+<nav class="toc">
+  <h4>Contents</h4>
+  <ol>
+    <li><a href="#panels">Panels &amp; where they live</a></li>
+    <li><a href="#part0">Part 0 — Executive summary</a></li>
+    <li><a href="#part1">Part 1 — The audit (by dimension)</a></li>
+    <li><a href="#part2">Part 2 — Proposed standard + wireframes</a></li>
+    <li><a href="#part3">Part 3 — Migration plan</a></li>
+    <li><a href="#part4">Part 4 — Measurement plan (Mixpanel)</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="panels">Panels &amp; where they live <span class="pt">— the implementation map</span></h2>
+<p class="section-intro">Before any analysis, the source. Paths are relative to the repo root
+  <span class="ev">apps/designer/src/app/modules/</span>. The five audited contexts collapse into <b>three panel
+  families</b>, because UI Designer’s two contexts share one component (with conditional fields), and the Data Model’s
+  two contexts share one component (with context divergences that are themselves a finding).</p>
+
+<div class="tbl-scroll">
+<table>
+  <thead><tr><th>Panel family</th><th>Contexts</th><th>Panel root component</th><th>Commit engine</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="dim">UI Designer</td>
+      <td>Process&nbsp;UI · UI&nbsp;Flow<br><span class="small">(shared component, context-conditional fields)</span></td>
+      <td><span class="ev">ui-designer/…/config/config-panel/config-panel.component.ts</span><br>
+        store: <span class="ev">config-panel.store.ts</span></td>
+      <td>Debounced live, <b>1000&nbsp;ms</b><br><span class="ev">config-panel.component.ts:376</span></td>
+    </tr>
+    <tr>
+      <td class="dim">Process Designer</td>
+      <td>BPMN node / element select</td>
+      <td><span class="ev">process-details/…/side-panel-prototype/side-panel-prototype.component.ts</span><br>
+        body: <span class="ev">process/…/node-details/node-details.component.ts</span></td>
+      <td>Debounced live, <b>700&nbsp;ms</b> + status cue<br><span class="ev">node-config.component.ts:256</span></td>
+    </tr>
+    <tr>
+      <td class="dim">Data Model</td>
+      <td>Project-level · Process-level<br><span class="small">(shared component, diverges by viewType)</span></td>
+      <td><span class="ev">data-model-builder/…/data-model-details-panel/data-model-details-panel.component.ts</span><br>
+        attr form: <span class="ev">data-model-attribute-details.component.ts</span> · canvas is React</td>
+      <td>Debounced live, <b>100&nbsp;ms</b> (attr) / <b>0&nbsp;ms</b> (entity)<br><span class="ev">data-model-details-panel.component.ts:296,313</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p class="small">Key shared sub-editors referenced throughout: validators
+  (<span class="ev">ui-designer/…/form-field-validators</span>, <span class="ev">data-model-attribute-validations</span>),
+  node actions (<span class="ev">node-actions/…/action-edit</span>), the floating A/B toggle services
+  (<span class="ev">ActionsNavModeService</span>, <span class="ev">UiOverlayModeService</span>).</p>
+
+<!-- ============================================================ -->
+<h2 id="part0">Part 0 — Executive summary <span class="pt">— the friction, ranked</span></h2>
+<p class="section-intro">The eight inconsistencies that most hurt a user moving between panels, ranked by how badly
+  they break transferred expectations (and, for the top items, trust in whether work was saved).</p>
+
+<ol class="ranked">
+  <li><span class="sev sev-hi">Trust / data-loss</span><span class="t">Three different “autosave” delays, and only one panel tells you it saved.</span>
+    Data Model commits ~100&nbsp;ms after you stop typing, Process Designer ~700&nbsp;ms, UI Designer ~1000&nbsp;ms — and only
+    Process Designer shows a saved/saving indicator. Everywhere else you can’t tell whether an edit stuck before you click away.
+    <span class="ev">data-model…:296</span> · <span class="ev">node-config…:256</span> · <span class="ev">config-panel…:376</span></li>
+
+  <li><span class="sev sev-hi">Relearn per tool</span><span class="t">The “use a static value vs. an expression” idea has three unrelated controls.</span>
+    Process actions use a parameter-type dropdown + code editor; Data Model validators use an <span class="mono">f(x)</span>
+    computed-toggle; UI Designer binds via a separate expressions editor. No shared “switch this field to dynamic” affordance,
+    and a bound field looks different in each.
+    <span class="ev">action-edit-param.component.ts</span> · <span class="ev">data-model-attribute-validations.component.ts</span></li>
+
+  <li><span class="sev sev-md">Disorientation</span><span class="t">“Nothing selected” looks different in all three.</span>
+    Process Designer shows a helpful “Please select a node…” message; UI Designer shows a dedicated empty-state component;
+    Data Model simply makes the whole panel vanish — no guidance, and the canvas appears to lose a feature.
+    <span class="ev">node-details.component.html:117</span> · <span class="ev">config-panel.component.html:109</span> · <span class="ev">data-model-builder.component.html</span></li>
+
+  <li><span class="sev sev-md">Broken expectation</span><span class="t">Multi-select works in exactly one panel.</span>
+    Select several components in UI Designer and you get a combined list; do the “same” thing in Process Designer or Data Model
+    and only one item (or nothing) responds. <span class="ev">config-panel.component.html:44-50</span></li>
+
+  <li><span class="sev sev-md">Visual whiplash</span><span class="t">The same data type is drawn with different controls.</span>
+    A boolean is a <i>switch</i> in Process Designer (“Can go back”) but a <i>checkbox</i> in Data Model (“Sensitive data”,
+    “Use in reporting”). Same meaning, different control, different click target.
+    <span class="ev">node-config.component.html:47</span> · <span class="ev">data-model-attribute-details.component.html:248,266</span></li>
+
+  <li><span class="sev sev-md">No shared anatomy</span><span class="t">Panels disagree on width, resizing, tabs, and header.</span>
+    UI Designer: fixed 344&nbsp;px, tabbed (Settings / Styles), header shows the component name. Process Designer: resizable
+    270&nbsp;px–50% viewport, tabbed (Node Config / Boundary / Actions / Gateway Decisions), header hardcoded “Node Settings”.
+    Data Model: fixed width, no tabs, flat form, header is the entity name.
+    <span class="ev">config-panel.scss</span> · <span class="ev">side-panel-prototype.component.ts:122-125</span></li>
+
+  <li><span class="sev sev-lo">Terminology</span><span class="t">One field, two names, inside a single tool.</span>
+    The Data Model name field is labelled <b>“Type name”</b> at project level and <b>“Object name”</b> at process level — the
+    divergence you flagged as a finding in itself. <span class="ev">data-model-details-panel.component.ts:197-199</span></li>
+
+  <li><span class="sev sev-lo">Even the experiment isn’t consistent</span><span class="t">The prototype’s own A/B toggle has three labels and two button orders.</span>
+    “Prototype settings” (Process &amp; UI Designer) vs “Prototype · Validator editor” (Data Model); and Data Model lists
+    <i>Inline&nbsp;·&nbsp;Overlay</i> while the others list <i>Overlay&nbsp;·&nbsp;Inline</i>.
+    <span class="ev">side-panel-prototype.component.html:3-36</span> · <span class="ev">data-model-details-panel.component.html:5-38</span></li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="part1">Part 1 — The audit <span class="pt">— current behavior · divergence · user impact · evidence</span></h2>
+<p class="section-intro">Each dimension below compares the three panel families, calls out the divergence, states the
+  user impact, and embeds the screenshot slot where current-state evidence belongs. Legend:
+  <span class="yes">✓ present</span> · <span class="no">✗ absent</span> · <span class="partial">~ partial / conditional</span>.</p>
+
+<h3>1.1 Commit model &amp; dirty state</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Behavior</th><th>UI Designer</th><th>Process Designer</th><th>Data Model</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">When edits apply</td>
+      <td>Live, ~1000&nbsp;ms after you stop <span class="ev">config-panel…:376</span></td>
+      <td>Live, ~700&nbsp;ms after you stop <span class="ev">node-config…:256</span></td>
+      <td>Live, ~100&nbsp;ms (attribute); instantly on change (entity) <span class="ev">…:296,313</span></td></tr>
+    <tr><td class="dim">Saved/dirty indicator</td>
+      <td class="no">✗ none — no cue at all</td>
+      <td class="yes">✓ header icon: cloud / spinner “Saving…” / green “All changes saved” <span class="ev">side-panel-prototype.component.html:77-106</span></td>
+      <td class="no">✗ none</td></tr>
+    <tr><td class="dim">Explicit Save anywhere</td>
+      <td class="partial">~ only inside floating overlays (validators, permissions, event handlers) <span class="ev">template-config-permissions-form…:396</span></td>
+      <td class="partial">~ only the action-edit overlay (Save / Cancel) <span class="ev">action-edit.component.html:602-625</span></td>
+      <td class="no">✗ never — even on close</td></tr>
+    <tr><td class="dim">Save on leaving panel</td>
+      <td class="yes">✓ pending debounce flushes</td>
+      <td class="yes">✓ flushes</td>
+      <td class="yes">✓ final save fired in ngOnDestroy if dirty &amp; valid <span class="ev">data-model-details-panel…:324-337</span></td></tr>
+    <tr><td class="dim">Undo / redo within panel</td>
+      <td class="no">✗ none observed <span class="infer">inference</span></td>
+      <td class="no">✗ none observed <span class="infer">inference</span></td>
+      <td class="no">✗ none observed <span class="infer">inference</span></td></tr>
+  </tbody>
+</table></div>
+<p class="small"><span class="infer">inference</span> No dedicated per-panel undo/redo stack surfaced in any of the three roots; users
+  appear to rely on browser/global undo where it exists. Worth confirming with the team rather than asserting.</p>
+<div class="impact"><b>User impact:</b> A designer learns “my edits just save” in one panel, then in another can’t tell whether a half-typed
+  value committed before they clicked the canvas. The lone autosave indicator (Process Designer) accidentally <i>teaches</i> the
+  user to expect a cue — which the other two then withhold. The 10× spread in debounce (100 → 1000&nbsp;ms) also makes the panels
+  feel differently “responsive” for no reason the user can perceive as intentional.</div>
+<div class="shot">
+  <span class="lbl">[SCREENSHOT NEEDED]</span>
+  Process Designer side panel header showing all three autosave states side-by-side (idle cloud, “Saving…” spinner, green
+  “All changes saved”). <b>How:</b> open a process, select a User Task, edit the Name field, capture the header region
+  (<span class="ev">data-testid="side-panel-autosave-status"</span>) at each state. Clip to the top ~80px of the panel.
+  <div class="cap">Contrast tile: capture the UI Designer and Data Model panel headers in the same edit moment to show the absence of any cue.</div>
+</div>
+
+<h3>1.2 Value binding — static literal vs. dynamic / expression</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Behavior</th><th>UI Designer</th><th>Process Designer</th><th>Data Model</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">How you go dynamic</td>
+      <td>Separate expressions editor / binding key on the field <span class="ev">template-config-expressions</span>, <span class="ev">form-field-key.component.ts</span></td>
+      <td>Action parameter <b>type dropdown</b> → opens a Monaco code editor; output mapping via Data Streams <span class="ev">action-edit-param.component.ts</span>, <span class="ev">data-streams.component.ts</span></td>
+      <td>Validator <b>f(x) toggle</b> (<span class="mono">isComputed</span>) flips a constraint between a static value and an expression <span class="ev">data-model-attribute-validations.component.ts</span></td></tr>
+    <tr><td class="dim">Expression editor</td><td>Dedicated editor component</td><td>Monaco (full code editor)</td><td>Inline expression field</td></tr>
+    <tr><td class="dim">How a bound field is marked</td>
+      <td class="partial">~ binding key shown on field</td>
+      <td class="partial">~ param card title / code-editor icon</td>
+      <td class="partial">~ f(x) toggle state</td></tr>
+    <tr><td class="dim">Consistent affordance?</td><td colspan="3" class="no" style="text-align:center">✗ — three unrelated mental models; nothing transfers between panels</td></tr>
+  </tbody>
+</table></div>
+<div class="impact"><b>User impact:</b> Binding a value to data is one of the most repeated actions across all three tools, yet it’s
+  the <i>least</i> consistent. There’s no single “this field can be dynamic” signal, so users hunt for the mechanism every time
+  and can’t tell at a glance whether a field is currently a literal or an expression.</div>
+<div class="shot">
+  <span class="lbl">[SCREENSHOT NEEDED]</span> Three-up comparison of a field in static vs. dynamic state:
+  (a) Process action parameter with type-dropdown + Monaco open; (b) Data Model validator with the f(x) toggle on, expression
+  visible; (c) UI Designer field with its binding/expression editor. <b>How:</b> reach each via canvas selection, toggle to the
+  dynamic mode, clip to the single field row.
+</div>
+
+<h3>1.3 Selection sync, empty &amp; multi-select states</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Behavior</th><th>UI Designer</th><th>Process Designer</th><th>Data Model</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">Canvas → panel</td>
+      <td>Store signal on selected template config <span class="ev">config-panel.store.ts</span></td>
+      <td>Selection routed via URL query param → NgRx/Effector → panel signal <span class="ev">process-editor.page.ts:262-265,497-507</span></td>
+      <td>React reducer dispatch opens details panel <span class="ev">useSelection.ts</span>, <span class="ev">DataModelNodeEntity.tsx:275</span></td></tr>
+    <tr><td class="dim">Empty / no-selection</td>
+      <td class="yes">✓ dedicated empty-state component <span class="ev">config-panel.component.html:109-111</span></td>
+      <td class="yes">✓ “Please select a node to view its configuration options” <span class="ev">node-details.component.html:117-121</span></td>
+      <td class="no">✗ panel hidden entirely — no message <span class="ev">data-model-builder.component.html</span></td></tr>
+    <tr><td class="dim">Multi-select</td>
+      <td class="yes">✓ shows a combined list of selected items <span class="ev">config-panel.component.html:44-50</span></td>
+      <td class="no">✗ single node only (one nodeId in URL) <span class="ev">process-editor.page.ts:322</span></td>
+      <td class="no">✗ single entity/attribute only</td></tr>
+    <tr><td class="dim">Read-only / locked</td>
+      <td class="partial">~ inherited from resource state <span class="infer">inference</span></td>
+      <td class="yes">✓ <span class="mono">editMode</span> disables every control <span class="ev">process-editor.page.ts:177</span>, <span class="ev">node-config…:393-403</span></td>
+      <td class="yes">✓ <span class="mono">readonly()</span> disables both form groups <span class="ev">data-model-details-panel…:283-291</span></td></tr>
+  </tbody>
+</table></div>
+<div class="impact"><b>User impact:</b> Multi-select is a “learned superpower” in UI Designer that silently fails elsewhere — users assume
+  rubber-banding several nodes will let them bulk-edit, and nothing happens. The vanishing Data Model panel reads as “the feature
+  disappeared,” not “select something.”</div>
+<div class="shot"><span class="lbl">[SCREENSHOT NEEDED]</span> Empty/no-selection state of each panel + the UI Designer multi-select
+  list. <b>How:</b> open each tool, deselect all (click empty canvas) and capture; then in UI Designer shift-select 2–3 components
+  and capture the combined list.</div>
+
+<h3>1.4 Validation &amp; errors</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Behavior</th><th>UI Designer</th><th>Process Designer</th><th>Data Model</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">Timing</td><td>On change / on overlay save</td><td>On change (autosave silently skips while invalid)</td><td>Inline on change, after field touched <span class="ev">data-model-details-panel.component.html:128-141</span></td></tr>
+    <tr><td class="dim">Message placement</td><td>Near the field / in overlay</td><td>Near the field; node misconfigs surfaced via separate warnings console <span class="ev">node-details.component.html:132-140</span></td><td>Inline <span class="mono">&lt;flx-error&gt;</span> directly under the field <span class="ev">…html:128-141</span></td></tr>
+    <tr><td class="dim">Does invalid block the save?</td>
+      <td class="partial">~ overlay save validates; live edits to invalid values may simply not persist</td>
+      <td class="partial">~ autosave is <i>silently</i> skipped while globally invalid <span class="ev">node-config…:266</span></td>
+      <td class="yes">✓ entity won’t save unless valid; attribute save gated on validity <span class="ev">…:316,334</span></td></tr>
+  </tbody>
+</table></div>
+<div class="impact"><b>User impact:</b> Because Process Designer <i>silently</i> stops autosaving when something is invalid (no blocking message
+  in the panel itself — the explanation lives in a separate warnings console), a user can type an invalid value, see the autosave
+  cue never turn green, and not know why. Data Model’s inline-error pattern is the clearest of the three and is the natural model
+  to standardize on.</div>
+<div class="shot"><span class="lbl">[SCREENSHOT NEEDED]</span> Each panel in an error state: Data Model with a blank required Name
+  (inline <span class="mono">&lt;flx-error&gt;</span> “Name is required”); Process Designer node with an invalid config (show the
+  un-greened autosave cue + warnings console link); UI Designer validator with a bad rule. <b>How:</b> trigger each error, clip to
+  the field + message.</div>
+
+<h3>1.5 Conditional fields</h3>
+<p>All three panels show/hide fields based on what’s selected — this is the one dimension where the <i>mechanism</i> is broadly
+  similar even though the rules differ.</p>
+<ul class="tight">
+  <li><b>UI Designer</b> swaps whole field groups by context and platform: Process-UI-only analytics &amp; navigation config vs
+    UI-Flow-only root title / parameters / conversation context; mobile-only container &amp; scroll props
+    (<span class="ev">config-panel.store.ts:415-508</span>).</li>
+  <li><b>Process Designer</b> reveals tabs and sections by node type — “Gateway Decisions” only for exclusive gateways, boundary-event
+    config only when relevant, “Can go back” only for User Tasks (<span class="ev">node-details.component.html:28-95</span>,
+    <span class="ev">node-config.component.html:43-83</span>).</li>
+  <li><b>Data Model</b> reveals type-dependent controls — array sub-type, enum reference, number type, decimal points, timezone —
+    as the attribute Type changes (<span class="ev">data-model-attribute-details.component.ts:213-325</span>).</li>
+</ul>
+<div class="impact"><b>User impact:</b> Generally good and expected. The risk is <i>discoverability</i>: fields appearing/disappearing without
+  animation or grouping can feel like the panel “jumped.” <span class="infer">inference</span> — whether the reveal is animated or instant
+  can’t be judged from static code; needs live observation.</div>
+
+<h3>1.6 Keyboard &amp; accessibility</h3>
+<p><span class="infer">inference</span> — Tab order, focus-on-selection, and shortcut behavior cannot be reliably determined from static
+  templates alone. What the code <i>does</i> show: standard form controls (native <span class="mono">&lt;input&gt;</span>,
+  <span class="mono">&lt;textarea&gt;</span>, design-system <span class="mono">flx-*</span> controls) are used throughout, so baseline
+  tab traversal should work; close buttons carry <span class="mono">aria-label</span> in Process Designer
+  (<span class="ev">side-panel-prototype.component.html:111</span>). No evidence of a documented shortcut scheme or managed
+  focus-on-select in any panel.</p>
+<div class="shot"><span class="lbl">[SCREENSHOT NEEDED — manual/AX pass]</span> This dimension needs a live keyboard walkthrough (Tab from
+  canvas selection into the panel, focus ring visibility, Esc-to-close). Capture a short screen recording rather than a still, per panel.</div>
+
+<hr class="soft">
+<h4>Visual / styling dimensions</h4>
+
+<h3>1.7 Control vocabulary</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Data type</th><th>UI Designer</th><th>Process Designer</th><th>Data Model</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">Boolean</td><td>mixed (toggles / checkboxes across sub-editors)</td><td class="partial">switch (“Can go back”) <span class="ev">node-config.component.html:47</span></td><td class="partial">checkbox (“Sensitive”, “Use in reporting”) <span class="ev">…details.component.html:248,266</span></td></tr>
+    <tr><td class="dim">Enum / choice</td><td>select / segmented</td><td>dropdown (Process Stage, Subprocess) <span class="ev">node-config.component.html:31</span></td><td>type select + autocomplete (enum reference) <span class="ev">…details.component.html:70,158</span></td></tr>
+    <tr><td class="dim">Reference</td><td>component identifier / key</td><td>autocomplete (workflow / subprocess)</td><td>“existing object” autocomplete</td></tr>
+    <tr><td class="dim">Text</td><td><span class="mono">flx-input</span></td><td><span class="mono">flx-input</span> <span class="ev">node-config.component.html:18</span></td><td><span class="mono">flx-input</span> / <span class="mono">flx-textarea</span> <span class="ev">…details.component.html:119,143</span></td></tr>
+  </tbody>
+</table></div>
+<div class="impact"><b>User impact:</b> The boolean split (switch vs. checkbox) is the clearest violation — same data type, two different
+  controls and interaction affordances. Text inputs are reassuringly consistent (all <span class="mono">flx-*</span> design-system
+  components), which proves a shared vocabulary is achievable; it just hasn’t been applied to booleans and binding controls.</div>
+<div class="shot"><span class="lbl">[SCREENSHOT NEEDED]</span> Side-by-side of a boolean control in Process Designer (switch) vs. Data
+  Model (checkbox), and an enum control in each. Clip to the individual rows.</div>
+
+<h3>1.8 Panel anatomy, grouping &amp; ordering</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Aspect</th><th>UI Designer</th><th>Process Designer</th><th>Data Model</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">Header / title</td><td>Component name <span class="ev">config-panel-header</span></td><td>Hardcoded “Node Settings” + node icon <span class="ev">side-panel-prototype.component.html:70</span></td><td>Entity/attribute name + type icon <span class="ev">…details.component.html:53</span></td></tr>
+    <tr><td class="dim">Sectioning</td><td>Tabs: Settings / Styles <span class="ev">…html:52-107</span></td><td>Tabs: Node Config / Boundary / Actions / Gateway Decisions <span class="ev">node-details.component.html:28-95</span></td><td>Flat form, no tabs <span class="ev">…details.component.html:100</span></td></tr>
+    <tr><td class="dim">Header actions</td><td>toggle + tabs</td><td>autosave cue + close</td><td>Go-to-source (project only) + ⋮ options menu + close <span class="ev">…html:58-96</span></td></tr>
+    <tr><td class="dim">Collapse-state persistence</td><td colspan="3" class="partial" style="text-align:center">~ not evidenced in any panel <span class="infer">inference</span></td></tr>
+  </tbody>
+</table></div>
+<div class="impact"><b>User impact:</b> Three different “shapes” of panel mean the eye has to re-find the title, the close affordance, and the
+  primary actions in each tool. Tabs vs. flat-form is the biggest structural fork: a user expecting a “Styles” tab in Data Model
+  finds none, and vice-versa.</div>
+<div class="shot"><span class="lbl">[SCREENSHOT NEEDED]</span> Full-height capture of each populated panel (UI Designer Process-UI,
+  UI Designer UI-Flow, Process Designer, Data Model Project, Data Model Process) — five clips, panel region only. These are the
+  anchor images for the whole report.</div>
+
+<h3>1.9 Spacing, typography, label alignment, density</h3>
+<p>The headers are encouragingly close already: all three use a 12&nbsp;px / 20&nbsp;px-line semibold neutral-900 title with a
+  16&nbsp;px leading icon and identical <span class="mono">px-4 py-1.5</span> padding
+  (<span class="ev">side-panel-prototype.component.html:53-72</span>, <span class="ev">data-model-details-panel.component.html:45-55</span>).
+  Body density diverges: Data Model uses a roomy <span class="mono">p-4</span> stacked form with <span class="mono">gap-3</span>;
+  the tabbed panels are denser. Labels are top-aligned in Data Model (<span class="mono">flx-label</span> above input); UI Designer
+  mixes alignments across sub-editors. <span class="infer">inference</span> — exact rhythm differences are best judged from the live captures
+  above rather than asserted from class names.</p>
+
+<h3>1.10 Layout mechanics — width, resize, scroll</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Aspect</th><th>UI Designer</th><th>Process Designer</th><th>Data Model</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">Width</td><td>Fixed ~344&nbsp;px <span class="ev">config-panel.scss</span></td><td>Resizable 270&nbsp;px – 50% viewport <span class="ev">side-panel-prototype.component.ts:122-125</span></td><td>Fixed <span class="ev">data-model-builder.component.html</span></td></tr>
+    <tr><td class="dim">Resizable?</td><td class="no">✗</td><td class="yes">✓ drag handle <span class="ev">side-panel-prototype.component.html:44-48</span></td><td class="no">✗</td></tr>
+    <tr><td class="dim">Long-form scroll</td><td>panel body scrolls</td><td>body <span class="mono">overflow-y-auto</span> <span class="ev">…html:119</span></td><td>body scrolls</td></tr>
+  </tbody>
+</table></div>
+<div class="impact"><b>User impact:</b> Only Process Designer lets users widen the panel for dense forms — which is exactly where the new
+  prototype is heading. Standardizing on resizable (with a shared min/default) would let the long Data Model attribute forms breathe.</div>
+
+<h3>1.11 Terminology &amp; microcopy</h3>
+<ul class="tight">
+  <li><b>The headline divergence:</b> Data Model name field reads <b>“Type name”</b> (project) vs <b>“Object name”</b> (process) —
+    same control, same purpose, two labels (<span class="ev">data-model-details-panel.component.ts:197-199</span>).</li>
+  <li><b>The A/B toggle</b> labels itself <b>“Prototype settings”</b> in Process &amp; UI Designer but <b>“Prototype · Validator
+    editor”</b> in Data Model, and reverses its button order (<span class="ev">side-panel-prototype.component.html:7-34</span> vs
+    <span class="ev">data-model-details-panel.component.html:9-35</span>).</li>
+  <li><b>Tooltips:</b> present but ad-hoc (e.g. Data Model “Go to source” <span class="mono">pTooltip</span>); no shared help-text convention evidenced.</li>
+</ul>
+<div class="open-q"><span class="tag">Open question for the team</span> Is the project-vs-process Data Model naming
+  (“Type” vs “Object”) an intentional domain distinction users rely on, or accidental drift? If intentional, the standard should
+  <i>codify and explain</i> it; if not, pick one. This is a domain-meaning call, not something the code can decide.</div>
+
+<h3>1.12 State indication — dirty / loading / disabled</h3>
+<ul class="tight">
+  <li><b>Dirty/saved:</b> only Process Designer shows it (see 1.1).</li>
+  <li><b>Disabled/read-only:</b> Process Designer and Data Model both fully disable controls on read-only; the visual treatment of
+    a disabled field is design-system-driven and <span class="infer">inference</span> — likely consistent, but confirm in the captures.</li>
+  <li><b>Loading:</b> no distinct per-panel skeleton/loading state surfaced in any root. <span class="infer">inference</span></li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="part2">Part 2 — Proposed standard <span class="pt">— one panel grammar, with wireframes</span></h2>
+<p class="section-intro">Schematic, greyscale wireframes — recommended layout and interaction, not visual specs. Boxes and
+  annotations only; final type, color, and spacing remain a design decision. Where the right answer is a judgement call, it’s flagged
+  as an <b>Open question for the team</b> rather than decided here.</p>
+
+<h4>Wireframe A — Proposed panel anatomy</h4>
+<figure>
+<svg viewBox="0 0 900 460" role="img" aria-label="Proposed panel anatomy wireframe">
+  <defs>
+    <style>
+      .bx{fill:#fff;stroke:#9aa0a6;stroke-width:1.5}
+      .zone{fill:#f3f4f6;stroke:#c4c8cd;stroke-width:1.2}
+      .lbl{font:600 12px -apple-system,Segoe UI,sans-serif;fill:#15171a}
+      .an{font:500 11px -apple-system,Segoe UI,sans-serif;fill:#6b7280}
+      .ann-line{stroke:#9aa0a6;stroke-width:1;stroke-dasharray:3 3}
+      .fld{fill:#fafafa;stroke:#c4c8cd;stroke-width:1}
+      .pill{fill:#e9edfb;stroke:#3b5bdb;stroke-width:1}
+      .accent{fill:#3b5bdb}
+      .muted{fill:#9aa0a6}
+    </style>
+  </defs>
+  <!-- panel frame -->
+  <rect x="40" y="20" width="360" height="420" rx="8" class="bx"/>
+  <!-- header zone -->
+  <rect x="40" y="20" width="360" height="46" class="zone"/>
+  <circle cx="64" cy="43" r="8" class="muted"/>
+  <text x="80" y="47" class="lbl">Selected element name</text>
+  <circle cx="350" cy="43" r="9" fill="#eefaf2" stroke="#1f7a4d"/>
+  <rect x="368" y="34" width="18" height="18" rx="4" class="fld"/>
+  <!-- saved cue + close annotation -->
+  <line x1="359" y1="43" x2="470" y2="30" class="ann-line"/>
+  <text x="476" y="27" class="an">Persistent save-status cue</text>
+  <text x="476" y="41" class="an">(idle / saving / saved) — every panel</text>
+  <!-- selection context row -->
+  <rect x="40" y="66" width="360" height="26" fill="#fcfcfd" stroke="#e5e7eb"/>
+  <text x="56" y="83" class="an">Type · path / context breadcrumb</text>
+  <!-- section A (accordion) -->
+  <rect x="56" y="104" width="328" height="22" class="pill"/>
+  <text x="68" y="119" class="lbl">▸ General</text>
+  <rect x="56" y="132" width="328" height="30" class="fld"/>
+  <text x="66" y="151" class="an">Label-top field</text>
+  <rect x="56" y="168" width="328" height="30" class="fld"/>
+  <!-- section B -->
+  <rect x="56" y="210" width="328" height="22" class="zone"/>
+  <text x="68" y="225" class="lbl">▸ Binding &amp; data</text>
+  <!-- section C -->
+  <rect x="56" y="240" width="328" height="22" class="zone"/>
+  <text x="68" y="255" class="lbl">▸ Validation</text>
+  <!-- section D -->
+  <rect x="56" y="270" width="328" height="22" class="zone"/>
+  <text x="68" y="285" class="lbl">▸ Style / appearance (where relevant)</text>
+  <!-- annotation: consistent ordering -->
+  <line x1="384" y1="115" x2="470" y2="150" class="ann-line"/>
+  <text x="476" y="140" class="an">Fixed section order across panels:</text>
+  <text x="476" y="155" class="an">General → Binding → Validation → Style</text>
+  <text x="476" y="170" class="an">Collapsible; collapse-state remembered</text>
+  <!-- footer / sticky -->
+  <rect x="40" y="404" width="360" height="36" class="zone"/>
+  <text x="56" y="426" class="an">Sticky zone: errors summary / contextual help</text>
+  <!-- resize handle -->
+  <rect x="36" y="20" width="6" height="420" fill="#3b5bdb" opacity="0.35"/>
+  <line x1="39" y1="240" x2="470" y2="300" class="ann-line"/>
+  <text x="476" y="300" class="an">Resizable (shared min ~300px / default ~360px),</text>
+  <text x="476" y="315" class="an">remembered per user — adopt Process Designer’s pattern</text>
+  <!-- multi-select note -->
+  <line x1="220" y1="92" x2="470" y2="360" class="ann-line"/>
+  <text x="476" y="360" class="an">Empty &amp; multi-select handled by shared</text>
+  <text x="476" y="375" class="an">states (see Wireframe D)</text>
+</svg>
+<figcaption><b>One header grammar</b> (name + persistent save cue + close), a <b>context breadcrumb</b>, then a fixed,
+  collapsible <b>section order</b> — General → Binding → Validation → Style. Tabs become <i>top-level sections</i> so flat-form panels
+  (Data Model) and tabbed panels (Process, UI Designer) share one model. Panel is resizable with a shared min/default.</figcaption>
+</figure>
+<div class="open-q"><span class="tag">Open question for the team</span> Tabs vs. stacked collapsible sections as the canonical
+  grouping. Wireframe A proposes stacked sections (works for both flat and complex panels); tabs may still win for very tall panels
+  like UI Designer Styles. This is a navigation-model decision the team should settle before migration.</div>
+
+<h4>Wireframe B — Static ↔ dynamic binding control</h4>
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="Binding control wireframe">
+  <defs><style>
+    .bx{fill:#fff;stroke:#9aa0a6;stroke-width:1.5}.fld{fill:#fafafa;stroke:#c4c8cd;stroke-width:1}
+    .lbl{font:600 12px -apple-system,sans-serif;fill:#15171a}.an{font:500 11px -apple-system,sans-serif;fill:#6b7280}
+    .tog{fill:#eef1fd;stroke:#3b5bdb;stroke-width:1.2}.togA{fill:#3b5bdb}.txt-w{font:600 11px sans-serif;fill:#fff}
+    .txt-a{font:600 11px sans-serif;fill:#3b5bdb}.ann-line{stroke:#9aa0a6;stroke-width:1;stroke-dasharray:3 3}
+    .mono{font:500 11px ui-monospace,Menlo,monospace;fill:#3a3f47}
+  </style></defs>
+  <!-- static state -->
+  <text x="40" y="34" class="lbl">Static (literal)</text>
+  <rect x="40" y="44" width="360" height="64" rx="6" class="bx"/>
+  <text x="56" y="66" class="an">Field label</text>
+  <rect x="56" y="74" width="240" height="24" class="fld"/>
+  <text x="66" y="90" class="mono">e.g. "Submit"</text>
+  <!-- fx toggle -->
+  <rect x="306" y="74" width="78" height="24" rx="6" class="tog"/>
+  <circle cx="320" cy="86" r="8" class="togA"/>
+  <text x="332" y="90" class="txt-a">ƒx</text>
+  <line x1="345" y1="86" x2="430" y2="70" class="ann-line"/>
+  <text x="436" y="66" class="an">Single shared toggle on every bindable field:</text>
+  <text x="436" y="80" class="an">OFF = literal input · ON = expression editor.</text>
+  <text x="436" y="94" class="an">Same icon, same position, same label everywhere.</text>
+
+  <!-- dynamic state -->
+  <text x="40" y="158" class="lbl">Dynamic (expression / data binding)</text>
+  <rect x="40" y="168" width="360" height="100" rx="6" class="bx"/>
+  <text x="56" y="190" class="an">Field label</text>
+  <rect x="306" y="178" width="78" height="24" rx="6" class="tog"/>
+  <rect x="308" y="180" width="38" height="20" rx="5" class="togA"/>
+  <text x="316" y="194" class="txt-w">ƒx</text>
+  <rect x="56" y="206" width="328" height="48" rx="5" fill="#1f2430"/>
+  <text x="68" y="226" class="mono" fill="#cdd3df">application.user.</text>
+  <text x="68" y="242" class="mono" fill="#7fd1a8">firstName</text>
+  <line x1="386" y1="220" x2="436" y2="200" class="ann-line"/>
+  <text x="436" y="188" class="an">Expression editor (shared component),</text>
+  <text x="436" y="202" class="an">data-model autocomplete inside.</text>
+  <line x1="384" y1="240" x2="436" y2="245" class="ann-line"/>
+  <text x="436" y="240" class="an">Bound state visibly marked: ƒx lit + mono</text>
+  <text x="436" y="254" class="an">expression styling, so “is this dynamic?”</text>
+  <text x="436" y="268" class="an">is answerable at a glance in any panel.</text>
+</svg>
+<figcaption>Replace three mechanisms (action-param dropdown+Monaco, validator f(x), UI binding editor) with <b>one ƒx toggle</b>
+  per bindable field. OFF = literal input; ON = the shared expression editor with data-model autocomplete. A bound field always
+  looks the same — lit ƒx + monospace expression — regardless of tool.</figcaption>
+</figure>
+<div class="open-q"><span class="tag">Open question for the team</span> Whether the expression editor is full-Monaco everywhere
+  or a lighter inline editor for simple fields. Process actions justify Monaco; a Data Model default-value may not. Suggest one
+  control, two sizes.</div>
+
+<h4>Wireframe C — Validation / error placement</h4>
+<figure>
+<svg viewBox="0 0 900 230" role="img" aria-label="Validation placement wireframe">
+  <defs><style>
+    .bx{fill:#fff;stroke:#9aa0a6;stroke-width:1.5}.fld{fill:#fff;stroke:#b42318;stroke-width:1.5}
+    .lbl{font:600 12px sans-serif;fill:#15171a}.an{font:500 11px sans-serif;fill:#6b7280}
+    .err{font:600 11px sans-serif;fill:#b42318}.ann-line{stroke:#9aa0a6;stroke-width:1;stroke-dasharray:3 3}
+    .banner{fill:#fef3f2;stroke:#b42318;stroke-width:1}
+  </style></defs>
+  <rect x="40" y="20" width="360" height="190" rx="8" class="bx"/>
+  <text x="56" y="48" class="an">Field label</text>
+  <rect x="56" y="56" width="328" height="26" class="fld"/>
+  <text x="66" y="74" class="an">invalid value</text>
+  <!-- inline error directly under -->
+  <text x="56" y="100" class="err">⚠ Name is required</text>
+  <line x1="200" y1="95" x2="470" y2="80" class="ann-line"/>
+  <text x="476" y="70" class="an">Inline error directly under the field,</text>
+  <text x="476" y="84" class="an">shown after the field is touched —</text>
+  <text x="476" y="98" class="an">adopt Data Model’s pattern everywhere.</text>
+  <!-- second field ok -->
+  <rect x="56" y="116" width="328" height="26" fill="#fafafa" stroke="#c4c8cd"/>
+  <!-- sticky banner -->
+  <rect x="40" y="174" width="360" height="36" class="banner"/>
+  <text x="56" y="196" class="err">2 issues prevent saving — review highlighted fields</text>
+  <line x1="220" y1="174" x2="470" y2="150" class="ann-line"/>
+  <text x="476" y="140" class="an">Sticky summary when invalid blocks the commit —</text>
+  <text x="476" y="154" class="an">replaces the silent “autosave just stops”</text>
+  <text x="476" y="168" class="an">behavior in Process Designer.</text>
+</svg>
+<figcaption>Errors render <b>inline, directly under the offending field</b>, on touch (Data Model’s current pattern — the clearest of
+  the three). When invalidity blocks the commit, a <b>sticky summary</b> at the panel foot explains it — so the save state is never
+  silently stuck without a reason.</figcaption>
+</figure>
+
+<h4>Wireframe D — Empty &amp; multi-select states</h4>
+<div class="grid2">
+<figure>
+<svg viewBox="0 0 440 300" role="img" aria-label="Empty state wireframe">
+  <defs><style>.bx{fill:#fff;stroke:#9aa0a6;stroke-width:1.5}.an{font:500 12px sans-serif;fill:#6b7280}
+    .lbl{font:600 13px sans-serif;fill:#15171a}.ic{fill:#e5e7eb;stroke:#9aa0a6;stroke-width:1.2}</style></defs>
+  <rect x="30" y="20" width="380" height="260" rx="8" class="bx"/>
+  <rect x="155" y="92" width="130" height="84" rx="10" class="ic"/>
+  <circle cx="220" cy="120" r="14" fill="#fff" stroke="#9aa0a6"/>
+  <text x="220" y="206" text-anchor="middle" class="lbl">Nothing selected</text>
+  <text x="220" y="228" text-anchor="middle" class="an">Select an element on the canvas</text>
+  <text x="220" y="246" text-anchor="middle" class="an">to edit its settings.</text>
+</svg>
+<figcaption><b>Shared empty state</b> — panel stays visible with a consistent “nothing selected” message + icon. Data Model’s
+  vanishing panel is replaced by this.</figcaption>
+</figure>
+<figure>
+<svg viewBox="0 0 440 300" role="img" aria-label="Multi-select wireframe">
+  <defs><style>.bx{fill:#fff;stroke:#9aa0a6;stroke-width:1.5}.an{font:500 11px sans-serif;fill:#6b7280}
+    .lbl{font:600 12px sans-serif;fill:#15171a}.row{fill:#fafafa;stroke:#c4c8cd;stroke-width:1}
+    .hd{fill:#f3f4f6;stroke:#c4c8cd}.pill{fill:#eef1fd;stroke:#3b5bdb;stroke-width:1}</style></defs>
+  <rect x="30" y="20" width="380" height="260" rx="8" class="bx"/>
+  <rect x="30" y="20" width="380" height="40" class="hd"/>
+  <text x="50" y="45" class="lbl">3 elements selected</text>
+  <rect x="48" y="74" width="344" height="34" class="row"/><text x="62" y="95" class="an">▸ Button — “Submit”</text>
+  <rect x="48" y="114" width="344" height="34" class="row"/><text x="62" y="135" class="an">▸ Input — “Email”</text>
+  <rect x="48" y="154" width="344" height="34" class="row"/><text x="62" y="175" class="an">▸ Text — “Heading”</text>
+  <rect x="48" y="206" width="344" height="30" class="pill"/>
+  <text x="62" y="225" class="an" fill="#3b5bdb">Shared properties editable for all 3 →</text>
+</svg>
+<figcaption><b>Shared multi-select</b> — list selected items + edit shared properties in bulk. Generalize UI Designer’s pattern to
+  Process Designer and Data Model (or, if bulk-edit is out of scope there, at least show the count + “editing one at a time”).</figcaption>
+</figure>
+</div>
+<div class="open-q"><span class="tag">Open question for the team</span> Does multi-select need true <i>bulk editing</i> in Process
+  Designer / Data Model, or just a graceful “N selected — pick one” state? Bulk-edit semantics for nodes/attributes are a product
+  decision, not a UI default.</div>
+
+<h4>Per-dimension target patterns (summary)</h4>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Dimension</th><th>Proposed single standard</th><th>Rationale</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">Commit model</td><td>Debounced autosave with <b>one shared delay</b> + a <b>persistent save-status cue</b> in every panel header</td><td>Removes the trust gap; the cue Process Designer already ships becomes universal</td></tr>
+    <tr><td class="dim">Binding</td><td>One <b>ƒx toggle</b> per bindable field → shared expression editor; bound fields marked identically</td><td>Most-repeated cross-tool action; deserves one mental model</td></tr>
+    <tr><td class="dim">Empty / multi-select</td><td>Shared empty-state component; shared multi-select list (bulk-edit TBD)</td><td>Eliminates the “feature vanished” and “multi-select silently fails” surprises</td></tr>
+    <tr><td class="dim">Validation</td><td>Inline error under field on touch + sticky summary when save is blocked</td><td>Data Model’s pattern is clearest; kills the silent “autosave stopped” case</td></tr>
+    <tr><td class="dim">Control vocabulary</td><td>Booleans = <b>switch</b> everywhere; one enum, reference, number+unit, color, icon control each</td><td>Same data type → same control; text inputs already prove it’s feasible</td></tr>
+    <tr><td class="dim">Anatomy</td><td>Header (name + cue + close) → context row → fixed collapsible section order; resizable with shared min/default</td><td>One scannable shape; muscle memory transfers</td></tr>
+    <tr><td class="dim">Terminology</td><td>One label per concept; resolve “Type name”/“Object name” (Open Q)</td><td>Removes within-tool drift</td></tr>
+    <tr><td class="dim">A/B toggle (prototype)</td><td>One label, one button order, or remove from shipping build</td><td>The experiment shouldn’t itself be an inconsistency</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="part3">Part 3 — Migration plan <span class="pt">— sequenced by (user impact × effort)</span></h2>
+<p class="section-intro">Effort is estimated in plain terms from what the code showed during the audit (component count, shared-ness,
+  whether a thing already exists in one panel). “Unlocks” notes which changes make later ones cheaper.</p>
+
+<div class="phase">
+  <div class="ph-head"><h3>Phase 1 · Save-status cue everywhere</h3><span class="effort e-quick">Quick win</span></div>
+  <p>Lift the Process Designer autosave indicator (idle / saving / saved) into a shared header component and mount it in UI Designer
+    and Data Model. The control already exists and is design-system-styled.</p>
+  <ul class="tight">
+    <li><b>Impact:</b> high — directly fixes the #1 trust/data-loss finding.</li>
+    <li><b>Unlocks:</b> a shared panel-header component (needed by Phase 4).</li>
+    <li><b>Evidence base:</b> <span class="ev">side-panel-prototype.component.html:77-106</span>, <span class="ev">AutosaveStatusService</span>.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="ph-head"><h3>Phase 2 · Align debounce + standardize booleans + empty state</h3><span class="effort e-quick">Quick win</span></div>
+  <p>Three small, independent unifications: (a) pick one debounce delay and apply it in all three commit engines; (b) switch Data
+    Model booleans from checkbox to switch (or settle the reverse — Open Q); (c) reuse one empty-state component so Data Model stops
+    hiding its panel.</p>
+  <ul class="tight">
+    <li><b>Impact:</b> medium-high; low risk, each is a localized change.</li>
+    <li><b>Evidence base:</b> <span class="ev">…:296/256/376</span>; <span class="ev">attribute-details…:248,266</span>; <span class="ev">config-panel.component.html:109</span>.</li>
+  </ul>
+  <div class="open-q" style="margin:10px 0 0"><span class="tag">Open question</span> Which boolean control is canonical — switch or checkbox? Decide before touching the field.</div>
+</div>
+
+<div class="phase">
+  <div class="ph-head"><h3>Phase 3 · Unify validation placement</h3><span class="effort e-mod">Moderate</span></div>
+  <p>Adopt inline-error-under-field on touch as the standard, and add the sticky “save blocked” summary so Process Designer stops
+    silently halting autosave. Touches the validation rendering of each panel but the Data Model pattern is a ready template.</p>
+  <ul class="tight">
+    <li><b>Impact:</b> medium-high — removes a genuinely confusing silent-failure case.</li>
+    <li><b>Unlocks:</b> consistent error model that the binding work (Phase 5) can lean on.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="ph-head"><h3>Phase 4 · Shared panel shell (header + sections + resize)</h3><span class="effort e-large">Large</span></div>
+  <p>Extract one panel shell: header grammar, context row, collapsible fixed-order sections, and resizable width with a shared
+    min/default. Re-home each panel’s body into it. Highest structural payoff but it re-frames three components.</p>
+  <ul class="tight">
+    <li><b>Impact:</b> high — this is the “feels like one product” change.</li>
+    <li><b>Depends on:</b> Phase 1 (header component) · <b>Unlocks:</b> consistent placement for Phases 3 &amp; 5.</li>
+    <li><b>Evidence base:</b> diverging roots <span class="ev">config-panel.component.html</span>, <span class="ev">side-panel-prototype.component.html</span>, <span class="ev">data-model-details-panel.component.html</span>.</li>
+  </ul>
+  <div class="open-q" style="margin:10px 0 0"><span class="tag">Open question</span> Tabs vs. stacked sections as the canonical grouping (Wireframe A).</div>
+</div>
+
+<div class="phase">
+  <div class="ph-head"><h3>Phase 5 · Unified ƒx binding control</h3><span class="effort e-large">Large</span></div>
+  <p>The deepest change: one ƒx toggle + shared expression editor + consistent bound-field marking, replacing three mechanisms.
+    High value but touches data shapes (computed flags, param types) and the Monaco integration.</p>
+  <ul class="tight">
+    <li><b>Impact:</b> high; <b>effort:</b> large (data-model + editor work across React and Angular).</li>
+    <li><b>Best done last</b> — benefits from the shared shell (Phase 4) and error model (Phase 3) already in place.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <div class="ph-head"><h3>Phase 0 · Tidy the prototype A/B toggle</h3><span class="effort e-quick">Quick win</span></div>
+  <p>Independent of the rest: give the “Prototype settings” toggle one label and one button order across all three panels (or gate
+    it out of shipping builds). Trivial, and stops the experiment from being a visible inconsistency while the migration runs.</p>
+  <p class="small">Sequencing note: do Phase 0 + 1 + 2 first (all quick wins, high trust payoff), then 3, then the large 4 → 5 pairing.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="part4">Part 4 — Measurement plan <span class="pt">— Mixpanel, baseline before you change anything</span></h2>
+<p class="section-intro">Every proposed standard should be backed by data: baseline the current pain <i>before</i> migration, then prove
+  each change worked. Below: a naming convention, the event catalog, the properties, and which events to instrument first.</p>
+
+<h3>Naming convention</h3>
+<div class="note" style="margin-top:8px">
+  <p style="margin:0"><b>Pattern:</b> <span class="evt">Config Panel — &lt;Object&gt; &lt;PastTenseAction&gt;</span> &nbsp;(Title Case, “Config Panel —” namespace prefix).</p>
+  <ul class="tight" style="margin-bottom:0">
+    <li>One namespace (<span class="mono">Config Panel</span>) so all panel analytics filter together regardless of tool.</li>
+    <li>The tool is a <b>property</b> (<span class="mono">panel_area</span>), never baked into the event name — so you compare across tools without string-matching.</li>
+    <li>Past-tense verbs (<span class="mono">Opened</span>, <span class="mono">Edited</span>, <span class="mono">Applied</span>) — events are facts that already happened.</li>
+  </ul>
+</div>
+<p class="small"><b>Shared property on every event:</b> <span class="mono">panel_area</span> ∈ {<span class="mono">ui_designer_process_ui</span>,
+  <span class="mono">ui_designer_ui_flow</span>, <span class="mono">process_designer</span>, <span class="mono">data_model_project</span>,
+  <span class="mono">data_model_process</span>} · plus <span class="mono">resource_id</span>, <span class="mono">selection_type</span>, <span class="mono">app_id</span>.</p>
+
+<h3>Event catalog</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Event</th><th>Fires when</th><th>Key properties</th><th>Supports decision</th></tr></thead>
+  <tbody>
+    <tr><td class="evt">Config Panel — Opened</td><td>Panel becomes visible for a selection</td><td><span class="mono">panel_area, selection_type, element_type</span></td><td>Anatomy; baseline usage per tool</td></tr>
+    <tr><td class="evt">Config Panel — Closed</td><td>Panel hidden / deselected</td><td><span class="mono">panel_area, duration_ms, was_dirty</span></td><td>Time-spent baseline; data-loss signal</td></tr>
+    <tr><td class="evt">Config Panel — Property Edited</td><td>A field value changes (debounced once per settle)</td><td><span class="mono">panel_area, property_key, control_type, value_mode</span> (static\|dynamic)</td><td><b>Most-touched properties → ordering</b>; control vocabulary; binding usage</td></tr>
+    <tr><td class="evt">Config Panel — Edit Applied</td><td>An edit actually commits (autosave fires)</td><td><span class="mono">panel_area, property_key, commit_latency_ms</span></td><td>Commit model; proves cue/timing change</td></tr>
+    <tr><td class="evt">Config Panel — Apply Clicked</td><td>Explicit Save pressed (overlay editors)</td><td><span class="mono">panel_area, editor_type</span></td><td>Commit model; where explicit save is still used</td></tr>
+    <tr><td class="evt">Config Panel — Dirty Navigation</td><td>User leaves panel/canvas while edits unsaved/unsettled</td><td><span class="mono">panel_area, property_key, pending_ms</span></td><td><b>Data-loss signal</b> — the core baseline for the save-cue work</td></tr>
+    <tr><td class="evt">Config Panel — Validation Shown</td><td>An inline error appears</td><td><span class="mono">panel_area, property_key, error_key</span></td><td>Validation standard</td></tr>
+    <tr><td class="evt">Config Panel — Save Blocked</td><td>Commit prevented by invalid state</td><td><span class="mono">panel_area, reason, was_silent</span></td><td>Validation; quantifies the silent-stop problem</td></tr>
+    <tr><td class="evt">Config Panel — Binding Mode Toggled</td><td>Field switched static ↔ dynamic</td><td><span class="mono">panel_area, property_key, to_mode</span></td><td><b>Binding standard</b> — frequency &amp; where</td></tr>
+    <tr><td class="evt">Config Panel — Undo / Redo Used</td><td>Undo or redo invoked while panel focused</td><td><span class="mono">panel_area, action</span> (undo\|redo)</td><td>Commit model; is recovery needed?</td></tr>
+    <tr><td class="evt">Config Panel — Empty State Shown</td><td>No-selection state rendered</td><td><span class="mono">panel_area</span></td><td>Empty-state standard</td></tr>
+    <tr><td class="evt">Config Panel — Multi Select Reached</td><td>≥2 elements selected</td><td><span class="mono">panel_area, selection_count</span></td><td>Multi-select standard</td></tr>
+    <tr><td class="evt">Config Panel — Resized</td><td>User drags the resize handle</td><td><span class="mono">panel_area, width_px</span></td><td>Layout; informs shared default width</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Tie-back: how each event proves a decision</h3>
+<div class="tbl-scroll"><table>
+  <thead><tr><th>Decision</th><th>Baseline (before)</th><th>Proof (after)</th></tr></thead>
+  <tbody>
+    <tr><td class="dim">Save-status cue (Phase 1)</td><td><span class="evt">Dirty Navigation</span> rate by <span class="mono">panel_area</span></td><td>Dirty-nav rate drops in panels that gained the cue</td></tr>
+    <tr><td class="dim">Validation placement (Phase 3)</td><td><span class="evt">Save Blocked</span> where <span class="mono">was_silent=true</span></td><td><span class="mono">was_silent=true</span> → 0; <span class="evt">Validation Shown</span> rises (errors now visible)</td></tr>
+    <tr><td class="dim">Unified ƒx binding (Phase 5)</td><td><span class="evt">Binding Mode Toggled</span> volume + abandons by tool</td><td>Toggle success/volume converges across <span class="mono">panel_area</span>; fewer mis-binds</td></tr>
+    <tr><td class="dim">Section ordering (Phase 4)</td><td><span class="evt">Property Edited</span> ranked by <span class="mono">property_key</span> per panel</td><td>Most-edited properties end up highest in the standardized order</td></tr>
+    <tr><td class="dim">Empty / multi-select</td><td><span class="evt">Empty State Shown</span>, <span class="evt">Multi Select Reached</span> frequency</td><td>Multi-select reached without an immediate deselect/bounce</td></tr>
+  </tbody>
+</table></div>
+
+<div class="impact" style="border-left-color:var(--good);background:var(--good-soft)">
+  <b style="color:var(--good)">Instrument first (so the baseline exists before migration starts):</b>
+  <span class="evt">Config Panel — Opened</span>, <span class="evt">Property Edited</span>,
+  <span class="evt">Edit Applied</span>, <span class="evt">Dirty Navigation</span>, and <span class="evt">Save Blocked</span>.
+  These five capture the trust/data-loss baseline (the #1 finding) and the most-edited-property data that drives section ordering —
+  both of which are meaningless if measured only <i>after</i> the changes ship. Land them ahead of Phase 1.
+</div>
+
+<hr class="soft">
+<p class="small">Generated 2026-06-25 from a static read of branch <span class="mono">prototype/process-side-panel</span>. Behavioral
+  claims are UX-observable with code citations; items tagged <span class="infer">inference</span> or marked <span class="mono">[SCREENSHOT NEEDED]</span>
+  require live verification. No application code was modified in producing this report.</p>
+
+</div>

@@ -1,0 +1,2446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Session Review — Process Actions Redesign (Dragos)</title>
+<style>
+  :root{
+    --paper:#FBF8F1; --paper-2:#F3EEE2; --ink:#211F1B; --ink-soft:#5A554C;
+    --rule:#D8D1C0; --mark:#B23A2E; --amber:#9C7A1E; --green:#2E6F5E;
+    --blue:#3A5A78; --plum:#6E4A6B; --hl:#FBF1D9; --shadow:rgba(33,31,27,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Open Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    font-size:14px;-webkit-font-smoothing:antialiased;line-height:1.5}
+  .mono{font-family:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+
+  header.mast{border-bottom:1px solid var(--rule);margin-top:36px;margin-bottom:16px}
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
+  h1{font-size:24px;line-height:1.2;margin:8px 0 6px;font-weight:700;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);font-size:14px;margin-bottom:6px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-bottom:8px}
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:5px}
+  .sw{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .mast-row{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;border-top:1px solid var(--rule);margin-top:10px;padding:12px 0}
+  .meta{display:flex;gap:26px;flex-wrap:wrap;font-size:13px}
+  .meta b{font-size:18px;font-weight:600;display:block;line-height:1}
+  .meta span{color:var(--ink-soft);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+
+  nav.tabs{display:flex;gap:4px;margin:0;flex-wrap:wrap}
+  .tab{background:none;border:1px solid var(--rule);border-radius:999px;padding:7px 16px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink-soft)}
+  .tab[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+  /* How this works — two-lane handoff (You ⇄ Claude across a central spine) */
+  .how{max-width:1040px}
+  .lane-row{display:grid;grid-template-columns:1fr 56px 1fr;align-items:center}
+  .lane-row .l{display:flex;justify-content:flex-end}
+  .lane-row .r{display:flex;justify-content:flex-start}
+  .next-rule{display:flex;align-items:center;gap:14px;margin:10px 0 6px}
+  .next-rule .line{flex:1;border-top:1px dashed var(--rule)}
+  .next-rule .lbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);font-weight:700}
+  .spine{align-self:stretch;position:relative;display:flex;align-items:center;justify-content:center}
+  .spine .seg{position:absolute;left:50%;width:2px;background:var(--rule);transform:translateX(-1px)}
+  .spine .seg.top{top:0;bottom:50%} .spine .seg.bot{top:50%;bottom:0}
+  .lane-row.future .spine .seg{background:none;border-left:2px dashed var(--rule)}
+  .avatar{position:relative;z-index:1;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 4px rgba(31,27,22,.18)}
+  .avatar svg{width:22px;height:22px;fill:currentColor;display:block}
+  .avatar.you{background:var(--blue)} .avatar.claude{background:#C75B38}
+  .lane-row.future .avatar{background:var(--paper);border:2px dashed var(--rule);color:var(--ink-soft);box-shadow:none}
+  .lane-row.future .avatar svg{width:20px;height:20px}
+  .lane-card{max-width:480px;width:100%;margin-bottom:20px;background:#fff;border:1px solid var(--rule);border-radius:14px;padding:16px 20px;box-shadow:0 1px 2px rgba(31,27,22,.05),0 10px 22px -16px rgba(31,27,22,.25)}
+  .lane-row.future .lane-card{background:rgba(255,253,247,.5);border-style:dashed;box-shadow:none}
+  .lane-card .ch{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:7px}
+  .lane-card h4{margin:0;font-size:17px;font-weight:600;line-height:1.25;color:var(--ink)}
+  .lane-row.future .lane-card h4{color:#5C544A}
+  .lane-card p{margin:0;font-size:14px;line-height:1.55;color:#5A534B}
+  .lane-row.future .lane-card p{color:#857D72}
+  .phase-tag{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);border:1px solid var(--rule);border-radius:999px;padding:2px 8px;font-weight:600}
+  .here{font-size:10px;letter-spacing:.07em;text-transform:uppercase;background:var(--green);color:#fff;border-radius:999px;padding:3px 9px;font-weight:700}
+  .actor{display:inline-flex;align-items:center;gap:5px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;border-radius:7px;padding:4px 9px}
+  .actor svg{width:11px;height:11px;fill:currentColor;display:block}
+  .actor.human{background:#E7ECF1;color:#3C5871} .actor.claude{background:#F6E1D7;color:#B4542F}
+  @media (max-width:640px){
+    .lane-row{display:flex;align-items:stretch;gap:14px}
+    .lane-row .spine{order:0;flex:none;width:44px}
+    .lane-row .l,.lane-row .r{order:1;flex:1;min-width:0;justify-content:flex-start}
+    .lane-row .l:not(:has(.lane-card)),.lane-row .r:not(:has(.lane-card)){display:none}
+    .lane-card{max-width:none;padding:13px 16px}
+    .lane-card h4{font-size:15px} .lane-card p{font-size:13.5px}
+  }
+
+  .panes{display:grid;grid-template-columns:1fr minmax(300px,40%);gap:24px;align-items:start}
+  .scriptcol{order:2;position:sticky;top:0;max-height:100vh;display:flex;flex-direction:column;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+  .scripthead{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);display:flex;align-items:center;gap:8px;min-height:48px;padding:0 14px;border-bottom:1px solid var(--rule);flex:none}
+  .scripthead button{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:7px;font:inherit;font-size:12px;padding:4px 10px;cursor:pointer;color:var(--ink-soft)}
+  .scriptwrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+  .script{overflow:auto;flex:1;min-height:0;border:none;background:transparent;padding:4px 6px;box-shadow:none}
+  .edgehint{position:absolute;left:50%;transform:translateX(-50%);z-index:6;display:none;align-items:center;gap:5px;
+    font:inherit;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ink);cursor:pointer;
+    background:#fff;border:1px solid var(--rule);border-radius:999px;padding:5px 11px;box-shadow:0 2px 8px var(--shadow)}
+  .edgehint:hover{border-color:var(--green);color:var(--green)}
+  .edgehint .arrow{color:var(--green);font-weight:700}
+  .edgehint.show{display:inline-flex}
+  .edgehint.top{top:8px} .edgehint.bot{bottom:8px}
+  .turn{padding:8px 13px;border-radius:8px;cursor:pointer;scroll-margin:14px;transition:background .15s}
+  .turn + .turn{border-top:1px dotted var(--rule)}
+  .turn .meta-r{display:flex;gap:8px;align-items:baseline;margin-bottom:1px}
+  .turn .spk{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+  .turn .ts{font-size:10px;color:var(--ink-soft)}
+  .turn.P .spk{color:var(--blue)} .turn.F .spk{color:var(--ink-soft)}
+  .turn.B .spk{color:var(--plum)} .turn.O .spk{color:#9a948a}
+  .turn .txt{font-size:12.5px;line-height:1.45}
+  .turn:hover{background:#fff}
+  .turn.hl{background:var(--hl);box-shadow:inset 3px 0 0 var(--green)}
+  .turn.hl-primary{background:var(--hl);box-shadow:inset 3px 0 0 var(--mark)}
+  .turn.anchored .spk::after{content:"•";color:var(--green);margin-left:6px}
+  .unsure{background:#F4E6C4;border-bottom:1px dashed var(--amber);padding:0 2px;border-radius:2px;cursor:help}
+
+  /* collapsible session summary (top of the Ideas tab) */
+  .summary{border:1px solid var(--rule);border-radius:12px;background:#fff;margin:0 0 18px;
+    box-shadow:0 1px 2px rgba(33,31,27,.05),0 10px 24px -18px rgba(33,31,27,.22)}
+  .summary>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+    padding:13px 16px;font-weight:600;font-size:14px;color:var(--ink);user-select:none}
+  .summary>summary::-webkit-details-marker{display:none}
+  .summary>summary .chev{color:var(--ink-soft);font-size:11px;transition:transform .15s}
+  .summary[open]>summary .chev{transform:rotate(90deg)}
+  .sum-body{padding:2px 16px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 26px}
+  .sum-sec h4{margin:0 0 7px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+    display:flex;align-items:center;gap:7px}
+  .sum-sec h4::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+  .sum-sec.strengths h4{color:var(--green)} .sum-sec.weaknesses h4{color:var(--mark)}
+  .sum-sec.points h4{color:var(--ink-soft)}
+  .sum-sec ul{margin:0;padding-left:17px}
+  .sum-sec li{font-size:13.5px;line-height:1.5;margin-bottom:5px;color:var(--ink-soft)}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:56px;padding:8px 2px;background:var(--paper);border-bottom:1px solid var(--rule);margin-bottom:14px;position:sticky;top:0;z-index:5}
+  .toolbar .count{font-weight:600} .toolbar .count em{color:var(--green);font-style:normal}
+  .tb-break{flex-basis:100%;height:0;margin:0}
+  .spacer{flex:1}
+  button.act{background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:8px 13px;font:inherit;font-size:13px;cursor:pointer}
+  button.ghost{background:none;color:var(--ink);border:1px solid var(--rule)} button.ghost:hover{border-color:var(--ink)}
+  select.filter{font:inherit;font-size:13px;border:1px solid var(--rule);border-radius:8px;padding:7px 10px;background:#fff;max-width:150px}
+
+  .card{border:1px solid var(--rule);border-radius:12px;background:#fff;padding:16px 16px 14px;margin-bottom:13px;display:grid;grid-template-columns:30px 1fr;gap:13px;box-shadow:0 1px 2px rgba(33,31,27,.05),0 10px 24px -16px rgba(33,31,27,.22);transition:border-color .15s,box-shadow .15s,transform .15s;cursor:pointer}
+  .card:hover{border-color:var(--ink-soft);transform:translateY(-1px);box-shadow:0 2px 5px rgba(33,31,27,.06),0 16px 32px -18px rgba(33,31,27,.30)}
+  .card.active{border-color:var(--mark);box-shadow:0 0 0 2px var(--mark),0 10px 24px -16px rgba(33,31,27,.22)}
+  .keep{appearance:none;width:23px;height:23px;border:1.5px solid var(--ink-soft);border-radius:6px;cursor:pointer;position:relative;margin-top:2px;background:#fff;flex:none}
+  .keep:checked{background:var(--green);border-color:var(--green)}
+  .keep:checked::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+  .card h3{margin:0 0 6px;font-size:18px;font-weight:600;line-height:1.3;letter-spacing:-.01em}
+  .tagrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:7px}
+  .tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:0;background:none;color:var(--ink-soft);display:inline-flex;align-items:center;gap:6px}
+  .tag::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+  .tag.pain_point{color:#9A352A}
+  .tag.feature_request{color:#33536F}
+  .tag.naming_copy{color:#7A6320}
+  .tag.design_decision,.tag.design_insight{color:#246253}
+  .tag.open_question{color:#856516}
+  .tag.context{color:#55514a}
+  .conf{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;display:inline-flex;align-items:center;gap:5px;color:var(--ink-soft)}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .conf .dot{display:none}
+  .src{margin-left:auto;font-size:11px;color:var(--ink-soft);font-weight:600;white-space:nowrap;transition:opacity .12s}
+  .card:hover .src,.card.editing .src{opacity:0}
+  .src .srcn{color:var(--ink-soft);font-weight:600}
+  .detail{margin:0 0 10px;font-size:14px;color:var(--ink-soft)}
+  .quote{border-left:3px solid var(--rule);padding:7px 0 7px 13px;margin:0 0 4px;font-style:italic;color:#3a372f;font-size:14px;line-height:1.5}
+  .topics{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .topic{font-size:10.5px;color:var(--ink-soft);border:1px solid var(--rule);border-radius:999px;padding:2px 9px;white-space:nowrap}
+  .framewrap{margin-top:10px}
+  .framebtn{font:inherit;font-size:11px;color:var(--ink-soft);background:#faf9f7;border:1px solid var(--rule);border-radius:7px;padding:3px 9px;cursor:pointer;letter-spacing:.02em}
+  .framebtn:hover{border-color:var(--ink-soft);color:var(--ink)}
+  figure.frame{margin:9px 0 0}
+  figure.frame img{display:block;max-width:100%;border:1px solid var(--rule);border-radius:9px}
+  figure.frame figcaption{font-size:11px;color:var(--ink-soft);margin-top:5px}
+  .who{font-size:11px;color:var(--ink-soft);margin-top:7px;letter-spacing:.04em}
+  .tension{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--rule)}
+  .tension .tlabel{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--mark);white-space:nowrap}
+  .tension .tlink{font:inherit;font-size:12px;text-align:left;color:var(--ink);background:#fbecea;border:1px solid #e3b9b2;border-radius:7px;padding:3px 9px;cursor:pointer;line-height:1.3}
+  .tension .tlink:hover{border-color:var(--mark);color:var(--mark)}
+  .conflict-toggle[aria-pressed="true"]{background:var(--mark);color:#fff;border-color:var(--mark)}
+  .query{display:flex;gap:8px;align-items:flex-start;margin-top:11px;padding:9px 11px;background:#FBF1D9;border:1px dashed var(--amber);border-radius:8px;font-size:12.5px;color:#6f560f}
+  .query b{color:var(--amber)}
+
+  .repsec{margin-bottom:24px}
+  .repsec h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--rule);padding-bottom:6px;margin:0 0 10px}
+  .note{background:#E3EEE9;border:1px solid #Bcd7cd;border-left:3px solid var(--green);border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13.5px}
+  .note b{color:var(--green)}
+  .rep{display:flex;gap:12px;align-items:baseline;padding:7px 0;border-bottom:1px dotted var(--rule);font-size:14px}
+  .rep .b{flex:0 0 64px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding-top:2px}
+  .b.auto{color:var(--green)} .b.confirm{color:var(--amber)} .b.query{color:var(--mark)}
+  .orig{text-decoration:line-through;text-decoration-color:var(--mark);color:var(--ink-soft)}
+  .arrow{color:var(--mark);font-weight:700;padding:0 4px} .fix{color:var(--ink);font-weight:500}
+  .fix.drop{color:var(--ink-soft);font-style:italic;font-weight:400} .qtext{color:#6f560f}
+  .hint{font-size:13px;color:var(--ink-soft);margin:0 0 14px}
+
+  .export{display:none;border:1px solid var(--rule);border-radius:12px;background:#fff;padding:16px;margin:0 0 20px}
+  .export.show{display:block}
+  .export .row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .export textarea{width:100%;height:200px;border:1px solid var(--rule);border-radius:8px;padding:12px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;background:var(--paper);resize:vertical}
+  /* review round-trip */
+  .review{display:none;border:1px solid var(--mark);border-radius:12px;background:#fff;padding:16px;margin:0 0 20px}
+  .review.show{display:block}
+  .review .row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .review .lead{font-size:13px;color:var(--ink-soft);margin:0 0 10px}
+  .review textarea{width:100%;height:220px;border:1px solid var(--rule);border-radius:8px;padding:12px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;background:var(--paper);resize:vertical}
+  .review-tally{font-size:12px;color:var(--ink-soft)}
+  .review-tally em{color:var(--mark);font-style:normal;font-weight:700}
+  button.send{background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:8px 13px;font:inherit;font-size:13px;cursor:pointer}
+  button.send[disabled]{opacity:.45;cursor:default}
+  .seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+  .seg button{background:#fff;border:none;padding:7px 14px;font:inherit;font-size:13px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+  /* card tools + edit mode */
+  .card{position:relative}
+  .cardtools{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:3;
+    background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:3px;
+    opacity:0;transition:opacity .12s;box-shadow:0 2px 8px var(--shadow)}
+  .card:hover .cardtools{opacity:1}
+  .cardtools button{font:inherit;font-size:11px;line-height:1;border:none;background:none;
+    color:var(--ink-soft);border-radius:5px;padding:5px 7px;cursor:pointer;white-space:nowrap}
+  .cardtools button:hover{background:var(--paper-2);color:var(--ink)}
+  .cardtools button.on{background:var(--mark);color:#fff}
+  .card.editing{box-shadow:0 0 0 2px var(--blue),0 1px 0 var(--shadow)}
+  .card.editing .cardtools{opacity:1}
+  .flags{display:flex;gap:6px;margin-top:9px}
+  .flag{font:inherit;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;
+    border:none;border-radius:5px;padding:2px 7px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .flag .flag-x{font-size:11px;line-height:1;opacity:.5}
+  .flag:hover .flag-x{opacity:1}
+  .flag.edit{background:#E2EBF1;color:#33536F}
+  .flag.note{background:#EDE6D6;color:#7A6320}
+  .card.excluded{opacity:.5}
+  .card.excluded h3,.card.excluded .detail,.card.excluded .quote{text-decoration:line-through;
+    text-decoration-color:var(--mark)}
+  .cmt{margin-top:10px}
+  .cmt-rm{margin-top:6px;font:inherit;font-size:11px;color:var(--ink-soft);background:none;border:none;
+    cursor:pointer;padding:2px 0;text-decoration:underline;text-underline-offset:2px}
+  .cmt-rm:hover{color:var(--mark)}
+  .cmt-in{width:100%;min-height:54px;border:1px solid var(--amber);border-radius:8px;
+    padding:8px 10px;font:inherit;font-size:13px;background:#FBF7EC;resize:vertical;color:var(--ink)}
+  .cmt-in::placeholder{color:var(--ink-soft)}
+  .mast-cmt{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 0}
+  .langtoggle{flex:none}
+  .langtoggle button{padding:6px 12px;font-size:12px}
+  .mast-note-btn{background:none;border:1px solid var(--rule);border-radius:7px;
+    font:inherit;font-size:12px;padding:4px 10px;cursor:pointer;color:var(--ink-soft)}
+  .mast-note-btn:hover{border-color:var(--ink);color:var(--ink)}
+  .mast-note-btn.on{background:var(--mark);color:#fff;border-color:var(--mark)}
+  .rep{position:relative} .turn{position:relative}
+  .rowtool{position:absolute;top:4px;right:4px;opacity:0;transition:opacity .12s;
+    background:var(--paper);border:1px solid var(--rule);border-radius:6px;
+    font:inherit;font-size:10.5px;color:var(--ink-soft);padding:3px 7px;cursor:pointer;z-index:2}
+  .rep:hover .rowtool,.turn:hover .rowtool{opacity:1}
+  .rowtool.on{background:var(--mark);color:#fff;border-color:var(--mark);opacity:1}
+  .repsec h2{position:relative}
+  .sectool{margin-left:10px;font:inherit;font-size:11px;border:1px solid var(--rule);
+    border-radius:6px;color:var(--ink-soft);padding:2px 8px;cursor:pointer;text-transform:none;letter-spacing:0}
+  .sectool.on{background:var(--mark);color:#fff;border-color:var(--mark)}
+  .cmt.inline{margin:6px 0 2px}
+  .efield[contenteditable="true"]{outline:none;border-bottom:1px dashed var(--blue);
+    background:#F7FAFD;border-radius:3px;padding:0 2px}
+  .card.editing .quote.efield[contenteditable="true"]{background:#F7FAFD}
+  .esel{font:inherit;font-size:12px;border:1px solid var(--rule);border-radius:6px;padding:3px 6px;background:#fff}
+  .echip{display:inline-flex;align-items:center;gap:5px}
+  .echip button{border:none;background:none;color:var(--mark);cursor:pointer;font-size:12px;padding:0 2px}
+  .topic-add{font:inherit;font-size:10.5px;border:1px dashed var(--rule);border-radius:999px;
+    padding:2px 8px;width:120px}
+  footer{color:var(--ink-soft);font-size:12px;border-top:1px solid var(--rule);padding:18px 0 50px;margin-top:24px}
+  .hidden{display:none!important}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+  .toast.show{opacity:1}
+  @media (max-width:880px){
+    .panes{grid-template-columns:1fr}
+    .scriptcol{position:static;max-height:none;order:-1}
+    .script{max-height:300px}.toolbar{position:static}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div class="eyebrow" data-ro="User testing · 2026-07-06 · înregistrare completă · transcript reparat">User testing · 2026-07-06 · full recording · transcript repaired</div>
+    <h1 data-ro="Process Actions — redesign node config &amp; save">Process Actions — redesign: node config &amp; save</h1>
+    <div class="sub" data-ro="71 min · 3 vorbitori (diarizați; 5 clustere ASR → 3 reali) · predominant RO cu termeni EN">71 min · 3 speakers (diarized; ASR 5 clusters → 3 real) · RO-primary with EN terms</div>
+    <div class="legend">
+      <i><span class="sw" style="background:var(--blue)"></span><span data-ro="Dragos — participant">Dragos — participant</span></i>
+      <i><span class="sw" style="background:var(--ink-soft)"></span><span data-ro="Diana — facilitator (gazdă)">Diana — facilitator (host)</span></i>
+      <i><span class="sw" style="background:var(--plum)"></span><span data-ro="Raluca — facilitator (gazdă)">Raluca — facilitator (host)</span></i>
+    </div>
+    <div class="mast-cmt">
+      <button class="mast-note-btn" data-act="report-note" onclick="toggleReportNote(this)">💬 Comment on the whole report</button>
+      <span class="langtoggle seg" role="group" aria-label="Report language">
+        <button id="lang-en" aria-pressed="true" onclick="setLang('en')">EN</button>
+        <button id="lang-ro" aria-pressed="false" onclick="setLang('ro')">RO</button>
+      </span>
+    </div>
+    <div class="mast-row">
+      <div class="meta">
+        <div><b id="m-ideas">0</b><span>ideas</span></div>
+        <div><b id="m-kept">0</b><span>kept</span></div>
+        <div><b id="m-rep">0</b><span>repairs</span></div>
+        <div><b id="m-query" style="color:var(--mark)">0</b><span>open queries</span></div>
+      </div>
+      <nav class="tabs">
+        <button class="tab" id="tab-ideas" aria-selected="true" onclick="showTab('ideas')">Ideas + transcript</button>
+        <button class="tab" id="tab-rep" aria-selected="false" onclick="showTab('rep')">Repair log</button>
+        <button class="tab" id="tab-how" aria-selected="false" onclick="showTab('how')">How this works</button>
+      </nav>
+    </div>
+  </header>
+
+  <section id="view-ideas">
+    <details class="summary" id="summaryBox">
+      <summary><span class="chev">▶</span><span id="sum-cap">Session summary</span></summary>
+      <div class="sum-body" id="sum-body"></div>
+    </details>
+    <div class="panes">
+      <div class="scriptcol">
+        <div class="scripthead">Repaired transcript</div>
+        <div class="scriptwrap">
+          <button class="edgehint top" id="edge-up" onclick="jumpEdge(-1)" aria-label="Jump to highlighted lines above"><span class="arrow">▲</span> <span id="edge-up-n"></span> above</button>
+          <div class="script" id="script"></div>
+          <button class="edgehint bot" id="edge-dn" onclick="jumpEdge(1)" aria-label="Jump to highlighted lines below"><span class="arrow">▼</span> <span id="edge-dn-n"></span> below</button>
+        </div>
+      </div>
+      <div class="ideacol">
+        <div class="toolbar">
+          <select class="filter" id="catFilter" onchange="applyFilter()"></select>
+          <select class="filter" id="topicFilter" onchange="applyFilter()"></select>
+          <button class="ghost act" onclick="selectAll(true)">All</button>
+          <button class="ghost act" onclick="selectAll(false)">Clear</button>
+          <span class="spacer"></span>
+          <button class="ghost act conflict-toggle" id="conflictToggle" aria-pressed="false" onclick="toggleConflicts()" title="Show only insights that are in tension with another">⚡ Conflicts</button>
+          <span class="tb-break"></span>
+          <span class="review-tally" id="review-tally" data-tip=""></span>
+          <span class="spacer"></span>
+          <button class="send" data-act="send-review" id="sendReview" onclick="openReview()" disabled>Send to Claude ↑</button>
+        </div>
+        <div class="export" id="exportPanel">
+          <div class="row">
+            <div class="seg">
+              <button id="fmt-md" aria-pressed="true" onclick="setFmt('md')">Markdown</button>
+              <button id="fmt-json" aria-pressed="false" onclick="setFmt('json')">JSON</button>
+            </div>
+            <span class="spacer"></span>
+            <button class="ghost act" onclick="copyOut()">Copy</button>
+            <button class="act" onclick="downloadOut()">Download</button>
+            <button class="ghost act" onclick="closeExport()">Close</button>
+          </div>
+          <textarea id="outBox" readonly></textarea>
+        </div>
+        <div class="review" id="reviewPanel">
+          <p class="lead">Your edits, comments, and exclusions — paste this back into Claude to rebuild the report. Untouched items are omitted.</p>
+          <div class="row">
+            <div class="seg">
+              <button id="rfmt-json" aria-pressed="true" onclick="setReviewFmt('json')">JSON</button>
+              <button id="rfmt-md" aria-pressed="false" onclick="setReviewFmt('md')">Markdown</button>
+            </div>
+            <span class="spacer"></span>
+            <button class="ghost act" onclick="copyReview()">Copy</button>
+            <button class="act" onclick="downloadReview()">Download</button>
+            <button class="ghost act" onclick="closeReview()">Close</button>
+          </div>
+          <textarea id="reviewBox" readonly></textarea>
+        </div>
+        <div id="ideas"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-rep" class="hidden">
+    <div class="note" data-ro="&lt;b&gt;Note despre transcript.&lt;/b&gt; Sesiunea a fost transcrisă cu Gemini flash (free-tier pe gemini-2.5-pro era 0) + diarizare acustică pyannote. Un decupaj de ~16 min (24:00–40:00) fusese trunchiat de model și a fost &lt;b&gt;recuperat prin re-transcriere&lt;/b&gt; și reîmbinat — se reconectează exact la 40:00. Diarizarea a spart cele 3 persoane în 5 clustere; le-am colapsat pe Dragos/Diana/Raluca după gen + conținut. &lt;b&gt;Fără frame-uri:&lt;/b&gt; înregistrarea conține doar vederea de galerie (avatarul lui Dragos), nu ecranul partajat, deci nu s-au putut extrage capturi de ecran."><b>Transcript notes.</b> Transcribed with Gemini flash (the free tier for gemini-2.5-pro was 0) + pyannote acoustic diarization. A ~16-min stretch (24:00–40:00) was truncated by the model and was <b>recovered by re-transcription</b> and spliced back in — it reconnects exactly at 40:00. Diarization split the 3 people into 5 clusters; they were collapsed onto Dragos/Diana/Raluca by gender + content. <b>No frames:</b> the recording holds only the call gallery view (Dragos’s avatar), not the shared screen, so no screenshots could be extracted.</div>
+    <p class="hint">Phase-1 repairs. <span style="color:var(--green)">Green</span> = applied ·
+      <span style="color:var(--amber)">amber</span> = confirm · <span style="color:var(--mark)">red</span> = needs you.</p>
+    <div id="repairs"></div>
+  </section>
+
+  <section id="view-how" class="hidden">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="ic-human" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12.6a4.3 4.3 0 1 0 0-8.6 4.3 4.3 0 0 0 0 8.6Zm7 7.4c0-3.3-3.4-5.4-7-5.4s-7 2.1-7 5.4V21h14v-1Z"/></symbol>
+      <symbol id="ic-claude" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/></symbol>
+    </svg>
+    <div class="how">
+      <div class="lane-row">
+        <div class="l">
+          <div class="lane-card">
+            <div class="ch"><span class="actor human"><svg><use href="#ic-human"/></svg> You</span><h4>Hand over the session</h4></div>
+            <p>Drop in the transcript, the recording, and a line on what was tested — all Claude needs to start.</p>
+          </div>
+        </div>
+        <div class="spine"><div class="seg bot"></div><div class="avatar you"><svg><use href="#ic-human"/></svg></div></div>
+        <div class="r"></div>
+      </div>
+
+      <div class="lane-row">
+        <div class="l"></div>
+        <div class="spine"><div class="seg top"></div><div class="seg bot"></div><div class="avatar claude"><svg><use href="#ic-claude"/></svg></div></div>
+        <div class="r">
+          <div class="lane-card">
+            <div class="ch"><span class="actor claude"><svg><use href="#ic-claude"/></svg> Claude</span><h4>Repairs the transcript</h4><span class="phase-tag">Phase 1</span></div>
+            <p>Fixes the ASR garble, restores the English domain terms, and reconciles who-said-what — anchored by acoustic voice-print diarization, which separates even same-gender speakers. Every fix is logged in the Repair log.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="lane-row">
+        <div class="l"></div>
+        <div class="spine"><div class="seg top"></div><div class="avatar claude"><svg><use href="#ic-claude"/></svg></div></div>
+        <div class="r">
+          <div class="lane-card">
+            <div class="ch"><span class="actor claude"><svg><use href="#ic-claude"/></svg> Claude</span><h4>Extracts the insights</h4><span class="phase-tag">Phase 2</span><span class="here">you are here</span></div>
+            <p>Pulls insight cards — category, quote, confidence — each anchored to its exact transcript lines.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="lane-row">
+        <div class="l">
+          <div class="lane-card">
+            <div class="ch"><span class="actor human"><svg><use href="#ic-human"/></svg> You</span><h4>Review, edit &amp; classify</h4></div>
+            <p>Keep or drop cards, tweak the wording, answer the open queries, and sort them by destination database.</p>
+          </div>
+        </div>
+        <div class="spine"><div class="seg bot"></div><div class="avatar you"><svg><use href="#ic-human"/></svg></div></div>
+        <div class="r"></div>
+      </div>
+
+      <div class="lane-row">
+        <div class="l"></div>
+        <div class="spine"><div class="seg top"></div><div class="seg bot"></div><div class="avatar claude"><svg><use href="#ic-claude"/></svg></div></div>
+        <div class="r">
+          <div class="lane-card">
+            <div class="ch"><span class="actor claude"><svg><use href="#ic-claude"/></svg> Claude</span><h4>Folds in your changes</h4></div>
+            <p>Reads your edits, comments, and exclusions, then rebuilds the report with them folded in.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="next-rule"><div class="line"></div><span class="lbl">Next · planned, not yet built</span><div class="line"></div></div>
+
+      <div class="lane-row future">
+        <div class="l"></div>
+        <div class="spine"><div class="seg top"></div><div class="avatar claude"><svg><use href="#ic-claude"/></svg></div></div>
+        <div class="r">
+          <div class="lane-card">
+            <div class="ch"><span class="actor claude"><svg><use href="#ic-claude"/></svg> Claude</span><h4>Publishes to Notion</h4></div>
+            <p>Pushes the final insights to Notion via the Notion MCP — each into the right database.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Generated by the <b>meetinginsights</b> skill · Phase 1 repair → Phase 2 extract. Quotes are the repaired Romanian.</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// [speaker, timestamp, text]
+const TURNS = [
+ [
+  "B",
+  "00:41",
+  "În primul rând: cum interacționezi cu tot ce ține de canvas și de configurarea de Node Action? Dacă te gândești la ultimele momente când ai configurat un proces și acțiunile de pe el — care a fost cel mai mare punct de fricțiune pentru tine?"
+ ],
+ [
+  "P",
+  "01:07",
+  "Păi, în primul rând, când ai de scris un business rule mai implicat și mai complicat, și la un moment dat vrei să te uiți de unde iei datele — dacă le iei din UI — sau să modifici niște chei… eu niciodată nu apăsam save, că save-ul ăla era cumva scos. Și dădeam collapse din greșeală. Când dai collapse — ai canvas-ul, ai zona aia de meniu unde editezi — nu se salvează nimic."
+ ],
+ [
+  "B",
+  "01:34",
+  "Când zici collapse, la ce te referi?"
+ ],
+ [
+  "P",
+  "01:35",
+  "Avem un sertar — un drawer — unde se închide zona aia și nu se salvează nimic. Apoi iar mă apucam să scriu, iar uitam, și era <span class='unsure' title='ASR: „enon” — reconstruit ca «enervant»'>enervant</span>, pentru că <span class='unsure' title='ASR: „nu e type save… save as type” — reconstruit'>nu era un auto-save, ci un save explicit</span>. Asta era efectiv biggest pain."
+ ],
+ [
+  "B",
+  "01:53",
+  "Dar scriai business rule-urile în drawer-ul ăla de acțiuni sau le dădeai expand?"
+ ],
+ [
+  "P",
+  "02:01",
+  "În drawer-ul de acțiuni. Aveam momente când voiam să configurez ceva de pe alt mediu fără să import, voiam să mă uit la un business rule și să scriu acolo — dădeam un switch, se închidea canvas-ul, se defocusa, și iar nu mi se salva. Cred că a fost cel mai mare friction."
+ ],
+ [
+  "B",
+  "02:24",
+  "Și asta era când făceai switch între business rule-uri în proces. Ziceai că aveai de luat niște chei din UI Designer — cum făceai rost de ele?"
+ ],
+ [
+  "P",
+  "02:41",
+  "Încercam să deschid din user task, apoi UI Designer-ul, și mă asiguram că salvez de 100 de ori save-ul ăla. Deschideam drawer-ul, îl puneam…"
+ ],
+ [
+  "B",
+  "02:59",
+  "Dar erai în același tab și pentru proces și pentru UI, nu mutai în taburi diferite?"
+ ],
+ [
+  "P",
+  "03:05",
+  "Nu, niciodată nu țineam două taburi pe chestia asta."
+ ],
+ [
+  "B",
+  "03:09",
+  "Te întreb pentru că am mai auzit des chestia asta: îți faci o configurare într-o pagină, ai nevoie de resurse din altă pagină, le deschizi în taburi diferite, iei ce vrei și te întorci."
+ ],
+ [
+  "B",
+  "03:25",
+  "Deci asta ține mai mult de comportamentul de save al business rule-ului. Puteai să dai și test pe modală și îți apare modala mare de test a business rule-ului, unde poți da save — dar e un save bizar, salvează mai dubios."
+ ],
+ [
+  "P",
+  "04:08",
+  "Da, mai ales la zona asta de chei — ai un ecran super complicat, cu 50 de carduri, și ai nevoie să te uiți. Cel mai mare pain e de fapt configurarea în general: zona asta de «set data to user interface», cum trimiți datele între UI și proces, binding-ul între business rule, proces etc. Trebuie să faci foarte multe switch-uri. Ca să faci UI-ul pentru un proces de upload e complicat: setezi ruta în UI Designer, te întorci la business rule, faci un download, pui tot obiectul înapoi în UI Designer, te duci iar în business rule, mai faci niște child actions, te asiguri că se duc corect datele către UI, mai testezi, te duci iar în business rule — era all over the place."
+ ],
+ [
+  "B",
+  "05:27",
+  "Am înțeles."
+ ],
+ [
+  "P",
+  "05:28",
+  "Și se mai întâmpla ce-ți povesteam: dădeai, închideai drawer-ul, nu salva, iar îl făceai."
+ ],
+ [
+  "B",
+  "05:38",
+  "Ok, deci e valabilă pentru business rule-uri și pentru alte configurări de genul ăsta."
+ ],
+ [
+  "P",
+  "05:53",
+  "În general cred că era doar body-ul de business rule."
+ ],
+ [
+  "F",
+  "09:08",
+  "A, și era ceva de send message, nu?"
+ ],
+ [
+  "P",
+  "09:10",
+  "Da, message-ul din UI Designer."
+ ],
+ [
+  "P",
+  "09:34",
+  "Acum e custom UI payload — nu mai se numește message, a fost un rename prin 5.1. Aici trebuie să pui, dacă vrei să randeze un ecran și să transmită datele corect, tot obiectul — pe root component, în cazul meu cardul, puneam tot. Trebuia să mă asigur că e ok în funcție de data model. Trimiteam tot ce era client ca să afișeze date pe client, mă întorceam în designer, mă întorceam pe rule-uri și continuam să mă asigur că data binding-ul e corect."
+ ],
+ [
+  "F",
+  "10:27",
+  "Ok."
+ ],
+ [
+  "P",
+  "10:29",
+  "Avem și native acum."
+ ],
+ [
+  "F",
+  "10:31",
+  "Da, pentru că ai opțiunea de native acum. O să sar un pic la alt subiect — după îți dau și link-ul pe prototip. Avem momentan și workflow-uri și procese; amândouă sunt diagrame pe care le configurezi, noduri cu conexiuni. Ți se pare o problemă că modul în care îți construiești diagrama e diferit în proces față de workflow?"
+ ],
+ [
+  "P",
+  "11:12",
+  "Nu neapărat diferit. În Process Designer am zona de BPMN, cu iconițe, canvas-ul e un BPMN editor. În workflows e diferit — îți pui niște noduri care nu sunt neapărat BPMN, nu sunt flow chart-uri sau gateway-uri, sunt noduri custom FlowX. Dar are sens."
+ ],
+ [
+  "F",
+  "11:44",
+  "Dar ca și construcția diagramei — în workflow, când adaugi un nod nou, cum îl adaugi?"
+ ],
+ [
+  "P",
+  "11:53",
+  "Din the big menu… ai și opțiunea cu start și îl iei din dropdown, dar prefer drag and drop-ul pentru că sunt obișnuit din integration designer. Eu eram before integration designer și configuram de atunci, așa a rămas."
+ ],
+ [
+  "F",
+  "12:08",
+  "E mai natural. Nu e o problemă dacă am aduce genul ăla de behavior și aici?"
+ ],
+ [
+  "P",
+  "12:24",
+  "Nu, nu. Zic doar contextual — dacă aș fi început cu integration designer, m-aș fi obișnuit cu dropdown-ul. Integration designer venind după the old BPMN editor, a rămas cumva."
+ ],
+ [
+  "F",
+  "12:54",
+  "O să-ți dau un link de la un prototip la care am lucrat, cu o serie de improvement-uri. Zi-mi dacă îl deschizi."
+ ],
+ [
+  "P",
+  "13:14",
+  "E un dev ăsta?"
+ ],
+ [
+  "F",
+  "13:16",
+  "E un PR. Poți să închizi modala."
+ ],
+ [
+  "F",
+  "13:23",
+  "Am făcut un proces cu niște noduri deja adăugate. Hai să ne uităm pe cel cu noduri, că sunt mai multe interacțiuni. Am făcut și niște restyling la noduri, stilizate un pic diferit, dar nu ăsta e main problem. Aș vrea să dai click pe un nod și explică-mi ce vezi."
+ ],
+ [
+  "P",
+  "14:06",
+  "E fain — văd toată zona de general config și de actions. Stream… a, stream e Kafka acum. Și zona de update task manager. Deci parcă am luat drawer-ul și s-a mutat într-un node config, dar văd că e splituit: actions… wow, e mult mai clean. Nu mai stai să te pierzi în drawer-ul ăla și poți accesa direct acțiunea. La un flow de upload file cu preview trebuie să configurezi super multe business rules — aici le ai la vedere și mi se pare mai ușor de navigat."
+ ],
+ [
+  "F",
+  "14:58",
+  "Ca primă impresie, ți se pare înghesuit content-ul?"
+ ],
+ [
+  "P",
+  "15:05",
+  "Nu, nu. E modern enough pentru zona asta de business rules."
+ ],
+ [
+  "F",
+  "15:11",
+  "Dacă faci modificări — uite, la update task, să zic că-i schimb numele — cum te aștepți să se propage salvările?"
+ ],
+ [
+  "P",
+  "15:22",
+  "Focusez, schimb, dau enter și se salvează."
+ ],
+ [
+  "F",
+  "15:31",
+  "Și dacă faci asta din dreapta, schimbi numele din dreapta?"
+ ],
+ [
+  "P",
+  "15:35",
+  "Nu știu cât o să fie prototipul, dar mă aștept să facă save as you type, și când dau focus-out se salvează."
+ ],
+ [
+  "F",
+  "15:39",
+  "Și ar fi valabil pentru toate modificările — adaugi un process stage, dai un update task, la fel?"
+ ],
+ [
+  "P",
+  "15:48",
+  "Cel puțin la name și la metadata, da — vreau să dau rename fără să stau să dau save."
+ ],
+ [
+  "F",
+  "16:07",
+  "Mă duceam în direcția: te aștepți ca panoul ăsta din dreapta să facă autosave sau te aștepți la un save explicit?"
+ ],
+ [
+  "P",
+  "16:17",
+  "Cel puțin pe metadata, dar chiar și la restul, e ideal să nu mai pierzi. Uite, dădeam switch, mă duceam pe alt mediu să văd ce e configurat, testam, eram pe un subproces, mă duceam pe main proces, îmi dădeam seama că subprocesul nu merge că am bușit niște data binding-uri, veneam aici — și e ok să salveze intercalat."
+ ],
+ [
+  "P",
+  "16:48",
+  "Pierdeai foarte mult timp înainte cu chestia aia că nu se salva. Nu știu dacă era it's just me, dar save-ul ăla era…"
+ ],
+ [
+  "F",
+  "16:59",
+  "Am auzit foarte mulți oameni de click obsesiv pe save-ul ăla de sus din acțiuni."
+ ],
+ [
+  "P",
+  "17:05",
+  "Da, e literally fix așa. Și mai e o situație: la acțiunile de tip data streamer, cu Kafka, nu găsești topic-ul din prima. Ai configurat tot, dai save, îți dai seama că trebuie să pui topic-ul, îl pui — și iar nu se salvează. Nu pierzi doar body-ul, pierzi și metadata gen Kafka topic."
+ ],
+ [
+  "F",
+  "17:34",
+  "Tot pe output, în cazul ăsta de Kafka stream: dacă adaugi un stream nou, zi-mi cum ți se pare interacțiunea asta."
+ ],
+ [
+  "P",
+  "17:52",
+  "E ok, dar… aici ai save-ul. Uite, sunt client, sunt pe dev; topic values sunt diferite de la mediu la mediu. Ce fac configuratorii: tu ești configurator, nu știi exact ce a făcut DevOps, ai nevoie de un topic din documentul ăla — aici ai toate topics de pe mediul ăsta, umbli strict în platformă, iei un topic, să zicem «document persist», care e upload-ul. Îl iei de aici. Și acum teoretic trebuie să mă întorc în configurare ca să-l pun și acolo — iar pierdeai timp."
+ ],
+ [
+  "P",
+  "19:00",
+  "Mi-a rămas ăsta deschis — e la back sau e intended?"
+ ],
+ [
+  "F",
+  "19:07",
+  "Cred că e o eroare de prototip, așteptarea mea era să se închidă. Dar ce înțeleg e că aici, pe topic name, te-ar fi ajutat fie un search, fie…"
+ ],
+ [
+  "P",
+  "19:27",
+  "Da, ar fi ideal ca la zona de data stream să corelăm values alea care vin din UI și să se reflecte acolo, ca să nu mai umbli. Sunt deja acolo, e foarte ușor — un search cu valorile care există. Și cheile la fel."
+ ],
+ [
+  "B",
+  "20:01",
+  "Ar fi trebuit să fie niște noduri de end ca să poți face o mapare — la mapare voiam să ajung. Ne uităm separat la asta, nu știu de ce nu merge. Ce mă interesa: ți se pare dubios că, atunci când deschizi un stream și faci configurarea pe el, ți se deschide overlay-ul ăla pe lângă?"
+ ],
+ [
+  "P",
+  "20:33",
+  "A, e token-ul de cinci minute. Cred că e de la token-ul ăla, nu?"
+ ],
+ [
+  "B",
+  "20:36",
+  "It's weird. Nu știu ce să-ți spun, e făcut cu Cloud. O să iau o notă să nu uit."
+ ],
+ [
+  "P",
+  "20:53",
+  "Sau măcar întreabă-l ce a setat ca token refresh în Keycloak pe modul ăsta."
+ ],
+ [
+  "F",
+  "21:14",
+  "Era un data stream și, în panoul ăsta din dreapta, prototipul propune un autosave, dar configurarea stream-ului în sine are un save explicit. Mă întreb cum…"
+ ],
+ [
+  "P",
+  "21:31",
+  "Mă așteptam iar ca, în momentul când fac focus-out — ies din ce am selectat sau am pus values — să salveze automat și aici. Dar e la o modală separată, știi?"
+ ],
+ [
+  "F",
+  "21:47",
+  "Ok. Specific pe cazul ăsta poți face și configurarea mapării pe nodurile de end. Făcând abstracție de acest buton, te-ai aștepta ca save-ul ăsta să fie save-ul mapării sau save-ul configurărilor de dinainte?"
+ ],
+ [
+  "P",
+  "22:17",
+  "Save-ul din modala asta strict pe mapări — pe ce obiect mi-am pus, fie schema, fie JSON view. Mă aștept să-mi salveze strict data mapping-ul de aici."
+ ],
+ [
+  "F",
+  "22:32",
+  "Și dacă faci save aici, apoi mai trebuie să dai un save și în modala din spate?"
+ ],
+ [
+  "P",
+  "22:43",
+  "E un pic misaligned… dar cumva are sens: salvezi o dată maparea și apoi ce ai configurat în data stream."
+ ],
+ [
+  "F",
+  "22:55",
+  "Dar te aruncă oare în aceeași situație de care povesteai tu?"
+ ],
+ [
+  "P",
+  "23:00",
+  "Nu, pentru că un data stream îl configurezi o dată and that's it. În schimb business rule-ul poți să-l modifici de 50.000 de ori sau să scrii 50.000 de business rule-uri."
+ ],
+ [
+  "F",
+  "23:16",
+  "Avem și o opțiune de business rule pe nodul ăsta."
+ ],
+ [
+  "F",
+  "23:50",
+  "Aici am și un business rule care e… era un child action."
+ ],
+ [
+  "P",
+  "23:52",
+  "Send notification. Iconițele astea sunt tipul de acțiune. A, și «save» are child?"
+ ],
+ [
+  "P",
+  "24:00",
+  "Stai un pic, mă induce în eroare ierarhia asta: eu dau expand la «save» și save are child un business rule? Nu cred că se poate — nu văd un scenariu în care să pui business rule-ul ca și copil în save."
+ ],
+ [
+  "F",
+  "24:20",
+  "E posibil să nu fie luate toate regulile în calcul — poate fi o greșeală de prototip."
+ ],
+ [
+  "P",
+  "24:40",
+  "Save-urile vin by default, predefinite. Stai să deschid repede unul vechi… «marketing advisor», ăsta."
+ ],
+ [
+  "P",
+  "25:30",
+  "Cumva «save data» oricum se face un bind automat într-un UI action. Să zicem un user task în care completez un form și la final trebuie save-ul — n-are sens să fie în child, pentru că aici e o ordine. La un moment dat în UI aveam un field «order» între name și action type; acum se execută în ordinea din listă. E weird să ai «save data» ca child action, pentru că save-ul teoretic e ultimul care se execută, după ce completezi tot și trec validările."
+ ],
+ [
+  "F",
+  "26:20",
+  "În prototip am luat fix behavior-ul din dev main acum, dar o să verific cu colegii din prod dacă e intended să poți face asta."
+ ],
+ [
+  "F",
+  "27:20",
+  "Ai găsit relativ ușor butonul de adăugare?"
+ ],
+ [
+  "P",
+  "27:30",
+  "Da, super intuitiv. Îmi place cum arată ierarhia — văd overview-ul a ce conține business-ul respectiv, și e foarte tare că există «define» cu trigger type, execution; practic ce era action config-ul e pus aici. Mă gândeam, înainte să expandez, dacă o să-mi apară body-ul inline și o să fie too much — și mișto că s-a unificat: avem editor type și la test rule și la data mapping, e uniformizat. Am butonul și zona de test, toate astea."
+ ],
+ [
+  "F",
+  "28:40",
+  "Da — nu mai faci configurarea business-ului în acel view, intri direct în modala de testare și faci configurare și testare în aceeași zonă."
+ ],
+ [
+  "F",
+  "30:00",
+  "Suntem în poza în care avem o listă de acțiuni în panoul din dreapta, care face autosave. Apoi avem overlay-ul business rule-ului, cu configurările lui. Iar config-ul în sine se deschide într-o modală în afară. Ca la stream-uri, save-ul ăla era un save explicit. Cu toată abstracția butonului de save, te-ai aștepta ca, după ce scrii scriptul, click-ul pe orice buton să-ți păstreze business rule-ul aici — sau e un «remember what I did», iar save-ul acțiunii se întâmplă în overlay-ul din spate?"
+ ],
+ [
+  "P",
+  "30:40",
+  "Cumva mă așteptam să se întâmple în spate — mi-am pus niște input data și whatever, «save action»."
+ ],
+ [
+  "P",
+  "31:00",
+  "Am observat chestia asta: în prod, la zona de edit și la data mapping, dai save, dar când vrei să ieși îți spune «discard changes». Ai triggeruit o dată save și ai salvat parametrii ăia, dar n-ai salvat acțiunea în sine. Ai impresia că ai salvat acțiunea, dar el te întreabă de discard — și tu de fapt dai discard la acțiune, nu la parametri, deși n-ai salvat-o. E un pic…"
+ ],
+ [
+  "F",
+  "31:40",
+  "Și cum te-ai aștepta să se întâmple?"
+ ],
+ [
+  "P",
+  "31:50",
+  "Zi că ai editat business rule-ul, ai făcut ceva — vrei să-i dai save de aici și să-ți țină minte business rule-ul. I-am dat save aici, închid modala, și rămâne."
+ ],
+ [
+  "F",
+  "32:20",
+  "Dar zi că ai niște modificări pe config-ul business rule-ului care nu sunt salvate. Cum ar trebui să se comporte save-ul atunci?"
+ ],
+ [
+  "P",
+  "32:40",
+  "Revin la metadatele astea gen «name action». Nu știu dacă există un best practice — dar field-urile de tip metadate/nume ar trebui salvate când faci focus-out."
+ ],
+ [
+  "F",
+  "33:20",
+  "Depinde de formular: dacă are multe configurări, unele platforme au un save explicit, altele autosave."
+ ],
+ [
+  "P",
+  "33:40",
+  "La genul ăsta unde vreau să denumesc doar chestia asta, mă așteptam să o facă by default. La checkbox-uri și chestii automate nu mă aștept la autosave, dar…"
+ ],
+ [
+  "F",
+  "34:10",
+  "Și save-ul pe care mi l-ai dat click acum e pentru config-uri sau și pentru corpul business rule-ului editat?"
+ ],
+ [
+  "P",
+  "34:20",
+  "Good point. Bănuiesc că le compilează pe toate."
+ ],
+ [
+  "F",
+  "34:35",
+  "Behavior-ul e ok, dar trebuie schimbat label-ul din modala aia — ar fi un «keep changes», adică «ține minte ce ai dat», nu un save explicit."
+ ],
+ [
+  "P",
+  "35:00",
+  "Exact asta voiam să zic — copy-ul de aici e cea mai mare problemă. Dacă scrie «keep changes», știu că mi-am configurat jumate din business rule, mai vreau să testez niște chei, și nu trebuie să rescriu tot; dau save la final, cu restul configurării acțiunii."
+ ],
+ [
+  "F",
+  "36:00",
+  "Și save-ul din overlay îți propagă save-ul pe pătrat."
+ ],
+ [
+  "P",
+  "36:10",
+  "Exact."
+ ],
+ [
+  "F",
+  "36:30",
+  "Dar dacă vrei să adaugi un child action, cum faci?"
+ ],
+ [
+  "P",
+  "36:45",
+  "Mă așteptam la un meniu. E un plusuleț… e mic. Din ierarhia asta mă așteptam să pot să adaug."
+ ],
+ [
+  "F",
+  "37:20",
+  "Voiam să mai întreb ceva. La «send data» văd că sunt posibile pe modala asta — «back in action», «back in steps», ce obiect. Ți se pare ok să fie așa?"
+ ],
+ [
+  "P",
+  "37:35",
+  "Da, eram curios — știu că erau anumite field-uri, configurai chei, era un model «back in steps». Dar la Kafka avem body-ul direct aici?"
+ ],
+ [
+  "F",
+  "38:00",
+  "Deocamdată da. De ce?"
+ ],
+ [
+  "P",
+  "38:15",
+  "E un pic ciudățel, că am o dată business rule unde tot un body e, și Kafka e tot un payload — message text. Diferă de la use case la use case: poți scrie multe sau puține în message."
+ ],
+ [
+  "F",
+  "38:35",
+  "Și e tot cu test?"
+ ],
+ [
+  "P",
+  "38:45",
+  "N-are sens test aici, nu prea ai cum să testezi. Poate pe integration designer, unde vin auto topic-urile by default — dar aici nu."
+ ],
+ [
+  "F",
+  "39:00",
+  "Te așteptai, fiind un code editor, să se deschidă tot într-o modală?"
+ ],
+ [
+  "P",
+  "39:15",
+  "Da, pentru că un payload pe Kafka poate ajunge destul de mare. Am doar trei aici — sunt pet-urile de download — dar cele mai mari payload-uri pe Kafka erau pe operațiunile cu document plugin, unde pui foarte multe în body/message. Acum nu mai folosim document plugin, deci nu mai are sens un data editor. Dar asta e o decizie de ce folosim."
+ ],
+ [
+  "F",
+  "39:30",
+  "Plus că trebuie să oferim backwards compatibility."
+ ],
+ [
+  "P",
+  "39:40",
+  "Da — configuratorii și oamenii din CS preferă să folosească și Kafka old way, deci o să configureze acolo în continuare."
+ ],
+ [
+  "F",
+  "39:50",
+  "La mapare e același behavior ca până acum — pentru configurare îți deschide modala de mapare. Are sens gruparea generală? Ți se pare înghesuită informația, ar merge făcut ceva mai mare?"
+ ],
+ [
+  "P",
+  "39:56",
+  "E ok — o dată ai metadate: nume, action type, trigger, execution, apoi opțiunile specifice fiecărui tip de acțiune. Nu e înghesuit — depinde, nu cred că avem pe cineva care configurează pe 13 inch, mostly developers pe desktop sau maximum 16 inch, so it's fine pe partea de randare."
+ ],
+ [
+  "P",
+  "40:00",
+  "Da, știam că e order-ul; order-ul se nota în funcție de ce ai pe handler, dar trebuia cumva — nu știu dacă e un box sau un spațiu aici cu ordinea de acțiune. Pentru că mai avem și callback-urile: la un callback action e important să știi când s-a rulat copilul și apoi callback-ul, ca să-ți trimită metadate înapoi în acțiunea părinte."
+ ],
+ [
+  "F",
+  "40:27",
+  "Poți să mă ajuți pe lista asta — de exemplu, tu ai un…"
+ ],
+ [
+  "P",
+  "40:32",
+  "Să zicem un callback la un scenariu de upload. Am un upload, header-ele sunt așa. Are un child — «send data to user interface». Și mai am un child care e un callback: îmi trimite prin headere «node updated», îi zic destination ID — de fapt destination node — și va fi numele primei acțiuni, gen «action 22»; tot ce s-a rulat aici, răspunsul trebuie să ducă acolo."
+ ],
+ [
+  "F",
+  "41:46",
+  "Și configurarea asta, fix cum ai scris-o, ar putea fi transformată într-un vizual de «this action is a callback, sends to this»? Sau n-are sens?"
+ ],
+ [
+  "P",
+  "42:00",
+  "Nu știu dacă le definim sau e doar o denumire. La scenariul clasic de upload file: are un business rule și un «send data to user interface», iar chestiile astea trebuie să ajungă înapoi pe acțiunea părinte. Punem un header în «destination ID», pe care-l marcăm în headere — «callbacks for action». Dar am observat că e un pic stretch aici cu headers: anumite acțiuni au nevoie de mai multe headere. Ca să pornești un proces prin Kafka ai nevoie de un <span class='unsure' title='ASR: „GVT” — probabil «JWT» (JSON Web Token), de confirmat'>JWT</span>, un FlowX header, workspace ID — sunt headere mari. Dacă pui workspace ID din start e ceva huge, tot string-ul ăla de UUID, și e greu de umblat."
+ ],
+ [
+  "F",
+  "43:17",
+  "Da."
+ ],
+ [
+  "P",
+  "43:18",
+  "Dacă am putea face un editor pe zona asta de headers…"
+ ],
+ [
+  "F",
+  "43:23",
+  "Acum teoretic n-ai avea problema asta, ești pe full size screen, n-ar trebui să te afecteze."
+ ],
+ [
+  "P",
+  "43:28",
+  "Corect. Dar nu avem mereu aceleași headere — pe cele default le avem, dar sunt situații în care configurezi și headere la advanced configuration."
+ ],
+ [
+  "F",
+  "43:46",
+  "Întrebam dacă putem transforma partea de cod pe care ai scris-o în niște selectoare — input-uri și select."
+ ],
+ [
+  "P",
+  "43:59",
+  "Cred că e destul de greu pe un header — dacă e JWT-ul e greu să pui selectorul ca opțiune într-un tree. Nu prea există un scenariu asemănător; userii au integrări custom, cu headerele lor definite în Kafka, și e greu să te legi de un selector în platformă. Mai degrabă lăsat free form."
+ ],
+ [
+  "F",
+  "44:28",
+  "Ziceai că vrei să știi din lista de acțiuni care sunt callback-uri — în afară de a-i pune un nume specific, nu știu dacă ai cum."
+ ],
+ [
+  "P",
+  "44:36",
+  "Acum mi-am dat seama că nu merită — e super specific ca use case. Dar merită un expand la headers, și cred că ar rezolva și chestia cu callback."
+ ],
+ [
+  "F",
+  "45:01",
+  "Mai e tot pe stilul ăsta un pic special: exclusive gateways. E și el pus aici. Voiam să te întreb cum îl citești — hai să analizăm și după ne întoarcem la modală. Aici e un preview de ce e configurat deja, nu?"
+ ],
+ [
+  "P",
+  "45:28",
+  "Nu am pus selector by default cu if-uri, else-uri și… e super ok. Ai «fix expression», true, else. Au rămas selector de noduri."
+ ],
+ [
+  "F",
+  "45:52",
+  "Aici singura schimbare e modul în care adaugi condițiile. Pe măsură ce le adaugi și le salvezi, apar aici."
+ ],
+ [
+  "P",
+  "46:00",
+  "A, și ăsta cu output — aveam test."
+ ],
+ [
+  "F",
+  "46:07",
+  "Da, e și acum, îți apare în zona din stânga la test."
+ ],
+ [
+  "P",
+  "46:15",
+  "La xor-uri erau niște use case-uri speciale, dar cred că-s pretty straightforward."
+ ],
+ [
+  "F",
+  "46:40",
+  "Uite, dacă îi dai un nume, schimbi numele."
+ ],
+ [
+  "P",
+  "46:51",
+  "E nice — în sfârșit am un visual cue, chiar sare în ochi."
+ ],
+ [
+  "F",
+  "47:11",
+  "Mai am o întrebare: dacă deschizi config-ul unui nod, îi faci rename dar nu salvezi — te aștepți să poți da click pe oricare nod din diagramă?"
+ ],
+ [
+  "P",
+  "47:37",
+  "Dacă modific mai multe chestii, ar trebui să nu mă lase să plec. Dar dacă am denumit doar name-ul și l-am pus pe focus… maxim mă așteptam — deși e greu, ține de cache — să-mi redeschidă last open. Pentru că n-am triggeruit save-ul, dar măcar ultimul state de unde am rămas: dacă am o listă de 80 de acțiuni și din greșeală fac focus-out pe nod și mi se închide zona de action — mi-a alunecat mouse-ul — să mă întorc și să fiu unde eram."
+ ],
+ [
+  "F",
+  "49:15",
+  "Doar ca să reiau — crezi că e ok width-ul panelului ăsta? Trebuia mai mic, mai mare, să-i poți face resize?"
+ ],
+ [
+  "P",
+  "49:26",
+  "Nu văd sensul la resize, cel puțin la action config — ai un trigger execution și maxim code editor-ul; expand-urile work fine."
+ ],
+ [
+  "F",
+  "49:40",
+  "Dar panelul din stânga, de process nodes și lista — ți se pare că-ți ia mult din ecran?"
+ ],
+ [
+  "P",
+  "49:49",
+  "Da, sunt cam verbose — ar merge un hover sau un info. Fontul e super tiny, nu cred că stă cineva să citească ce face nodul. Mai degrabă un info point: e un service task, am un «i» mic și văd ce face. E more than enough."
+ ],
+ [
+  "F",
+  "50:15",
+  "Minimizezi vreodată acele paneluri? Des?"
+ ],
+ [
+  "P",
+  "50:20",
+  "Da, chiar des — voiam să văd structura de <span class='unsure' title='ASR: „staj” → stage-uri / swimlane-uri'>stage-uri</span>. Aveam mai multe swimlane-uri, un back office swimlane, și voiam să văd de unde pleacă fiecare."
+ ],
+ [
+  "F",
+  "50:37",
+  "Ar fi problematic dacă le-am face minimize by default?"
+ ],
+ [
+  "P",
+  "50:43",
+  "Nu, deloc."
+ ],
+ [
+  "F",
+  "50:45",
+  "Și zona de navigation — interacționezi des cu ea?"
+ ],
+ [
+  "P",
+  "50:53",
+  "Nu prea — navigation-ul e un one-time deal. Odată ce ți-ai făcut setup-ul și ai tras toate nodurile, nu prea mai revii. Dar la process nodes, odată colapsat, umbli pe canvas și nu te mai interesează."
+ ],
+ [
+  "F",
+  "51:21",
+  "Pe prototip e propusă și interacțiunea de «click node → new»: dacă dai click pe un nod, îți apare panelul de new node și poți adăuga fără drag and drop."
+ ],
+ [
+  "P",
+  "52:03",
+  "Era și înainte, în UI Designer — copy și sequence-ul. La gateway-uri, țin minte că era foarte greu: voiai să iei un start, puneai niște chestii, dădeai scroll, dădeai înapoi… E super ok ăla cu dropdown-ul cu tipul de nod."
+ ],
+ [
+  "F",
+  "53:00",
+  "Ce mi se pare super frustrant pe ce e acum: trebuie să ai nodurile pe diagramă puse și abia după poți face conexiunea. Nu poți să pui un exclusive gateway, apoi un user task, ce vreau eu, ca să-mi construiesc diagrama."
+ ],
+ [
+  "P",
+  "53:38",
+  "Și mai ales la zonele de footer și header, unde se configurează strict cu gateway-uri — trebuie să le reconectezi după, e complicat să faci sequence-urile alea. Nu, e super nice ăsta."
+ ],
+ [
+  "F",
+  "53:54",
+  "Nu mai avem mult timp, mai țin cinci minute dacă poți sta. Încercăm să păstrăm consistența între Process Designer și UI Designer. Avem niște situații specifice la UI Designer: pe hide condition-uri, cum ești acum în expresia asta, e propus același behavior ca pe nodul de actions. Ți se pare că are sens?"
+ ],
+ [
+  "P",
+  "54:56",
+  "Are sens, că și la node action și business rule, până la urmă astea sunt JavaScript expressions. E ok să ai aliniat business rule-ul de JS, Python, tot funcții și cod. Înainte aveai un super tiny screen și trebuia să scrii un hide expression de JavaScript — și unele sunt complicate, nu doar «x nu e afișat». Nice."
+ ],
+ [
+  "F",
+  "55:41",
+  "Și la fel la permissions, nu? Uite — permissions, hide condition, îți dau niște condiții."
+ ],
+ [
+  "P",
+  "56:04",
+  "Da, văd că și ăsta e făcut cumva."
+ ],
+ [
+  "F",
+  "56:09",
+  "Te-ar ajuta să vezi toate condițiile astea? Acum pe preview sunt defalcate, le vezi una sub alta. Te ajută să le vezi pe toate at a glance, sau un shortcut ca la event handlers?"
+ ],
+ [
+  "P",
+  "56:33",
+  "Ar fi ca la event handlers. Dacă ai mai multe swimlane-uri, back office/front office, ajungi la super multe permissions de hide și disable — mi se pare mult mai clean să am, ca la node action, granulele astea cu ce am configurat."
+ ],
+ [
+  "F",
+  "57:01",
+  "Ai deschide un mic cărduleț, și când îi dai edit…"
+ ],
+ [
+  "P",
+  "57:08",
+  "Da — să le vezi cu «N» și chestii nu prea te ajută."
+ ],
+ [
+  "F",
+  "57:17",
+  "Styling-ul ar fi similar; doar cele de hide/disable au nevoie de un expand, un sumar. Ca behavior ar trebui să fie aliniate între toate panelurile de genul ăsta."
+ ],
+ [
+  "P",
+  "57:37",
+  "La UI actions contează ordinea?"
+ ],
+ [
+  "F",
+  "57:42",
+  "Da, contează să ruleze în ordine."
+ ],
+ [
+  "P",
+  "57:45",
+  "Aveam… nu mai știu cum e, am un lapsus. Chiar avem order acolo? Serios? Ok. Știu că, la fel ca la event handlers, e recent din 5.9, dar voiam să văd cum era în 5.1."
+ ],
+ [
+  "F",
+  "59:09",
+  "Aveam cu order, respectă ordinea. Dar acum sunt și niște guidelines: sunt chestii unde, de blur, nu poți să le pui. Scuze că am divagat."
+ ],
+ [
+  "F",
+  "59:28",
+  "Ți se pare ok ca, având configurarea din proces pe acest overlay, să avem același behavior și în UI Designer? Și crezi că e destul spațiu în UI Designer, sau e prea mic/prea mare panelul?"
+ ],
+ [
+  "P",
+  "59:41",
+  "Da, da. În designer n-am umblat personal, sincer. Sunt doar props până la urmă. Cu styles niciodată — ai niște override-uri și fixed props, eu nu umblu."
+ ],
+ [
+  "F",
+  "1:00:17",
+  "Mai e pe buton, pe acțiunile care au — uite, un «new action». Pe behavior-ul curent, când pui o acțiune pe un buton, poți să editezi acea acțiune și din proces."
+ ],
+ [
+  "P",
+  "1:00:42",
+  "Din UI Designer, da. Și din proces, și din UI Designer."
+ ],
+ [
+  "F",
+  "1:00:45",
+  "Cât de des folosești chestia asta?"
+ ],
+ [
+  "P",
+  "1:00:49",
+  "Am folosit-o mai ales la subprocese, când voiam acțiuni pe subprocese — schimbam denumirea. Dar n-am folosit-o des."
+ ],
+ [
+  "F",
+  "1:01:08",
+  "Erai într-un UI din proces părinte, aveai nevoie de o acțiune din…"
+ ],
+ [
+  "P",
+  "1:01:17",
+  "O foloseam mult când mutam un proces dintr-un mediu în altul, sau copiam procesul fără copy resources, și erau alea cu «duplicated»: dacă îți copiezi procesul pe mediu, îți pune un «_duplicated» la denumire. Curățam direct din UI Designer — dădeam rename la acțiuni ca să se potrivească cu scenariul."
+ ],
+ [
+  "F",
+  "1:01:57",
+  "Dar asta e mai mult o problemă de copy-paste a noastră?"
+ ],
+ [
+  "P",
+  "1:02:01",
+  "Da, ține de cum transporți procesele între medii sau workspace-uri. Nu cred că un client întâmpină asta — ei merg pe export-import. La noi, dacă acțiunea există deja în mediu cu label-ul ăla, designer-ul îi pune «_duplicated» și un new ID."
+ ],
+ [
+  "F",
+  "1:02:31",
+  "Și dacă vrei să referențiezi acea acțiune din proces, îi dai rename. De ce ți-e mai ușor din acțiunea din UI Designer decât din proces?"
+ ],
+ [
+  "P",
+  "1:02:51",
+  "Pentru că, atunci când copiezi, nu rămân legăturile pe butoane. Ai subproces, ai UI, ai acțiune, dar nu sunt binding — trebuie să le refaci; și dacă tot intru pe buton să fac bind-ul, redenumesc acțiunea acolo."
+ ],
+ [
+  "F",
+  "1:03:13",
+  "Dar mergând pe ideea că poți accesa o anumită acțiune la nivel de UI Designer — cum faci asta?"
+ ],
+ [
+  "P",
+  "1:03:27",
+  "Apăs pe buton și mă duce în Process Designer… a, direct acțiunea."
+ ],
+ [
+  "F",
+  "1:03:34",
+  "Îți deschide direct acțiunea aceea. Ce pierzi aici e că nu mai vezi tree-ul de acțiuni pe nod, și te aruncă în save-ul ăla bizar cu save. Cum vezi interacțiunea asta?"
+ ],
+ [
+  "P",
+  "1:04:07",
+  "Nu știu dacă e ok să fie doar acțiunea asta — dacă ai mai multe acțiuni de save… Îmi deschid «new action», rename, îi dau edit."
+ ],
+ [
+  "F",
+  "1:04:32",
+  "Aici verifică și îți arată toate tipurile de acțiuni care pot fi binded cu tipul ăsta de UI component și care sunt setate ca acțiuni manuale."
+ ],
+ [
+  "P",
+  "1:04:51",
+  "A, și aici e un pic weird că rămâne deschisă modala. Dar ok, sunt doar menu actions pentru interacțiunea cu user task-ul. Mi se pare un pic greu de folosit — am «new action name», selectez alta, se schimbă automat, ok, nice."
+ ],
+ [
+  "F",
+  "1:05:18",
+  "Aici e un debate pe care-l aveam cu colegii din product: dacă e nevoie de acest edit, sau dacă vrei să faci edit de acțiune să-ți deschidem într-un tab nou, unde iei acțiunea, nodurile, tot ce-ți trebuie."
+ ],
+ [
+  "P",
+  "1:05:47",
+  "Era fain — în celălalt view nu aveam tipul de acțiune, iconița."
+ ],
+ [
+  "F",
+  "1:05:54",
+  "Iconița? Te ajuta?"
+ ],
+ [
+  "P",
+  "1:06:03",
+  "Da — să le scanez mai ușor, le văd pe toate de save. Acum, când mă gândesc, îmi schimbam de obicei name-ul, dar niciodată n-am modificat configurarea in depth. E un pic weird că nu-mi dau seama de context — n-am nici nodul, nici canvas-ul, să văd unde e integrat, dacă are un boundary sau alte chestii. Aș lăsa direct cum era înainte: să-mi deschid action panel-ul, tot drawer-ul cum e acum în dreapta, dar să mi-l deschidă în Process Designer, ca să le editez acolo, să nu fie confusing."
+ ],
+ [
+  "P",
+  "1:07:18",
+  "Mă așteptam, când am observat asta, să mă ducă direct în proces — că mi se deschide Process Designer aici. Aș pune-o într-un tab nou."
+ ],
+ [
+  "F",
+  "1:07:37",
+  "Bun, nu te mai reținem mult. Cel mai probabil o să mai venim, o să vin eu cu UI Designer-ul să discutăm specific pe el. Momentan — ai tu vreun pain, vreo chestie?"
+ ],
+ [
+  "P",
+  "1:08:06",
+  "Ăla era pain-ul meu în toate procesele: zona de body, tot ce ținea de payload/body/message, și faptul că trebuia să revii, să deschizi zona aia de drawere, nu se salvau și nu le aveai self-served acolo. Acum mi se pare super nice, că ai totul self-served — poți configura fără să te întrerupi din flow."
+ ],
+ [
+  "P",
+  "1:08:36",
+  "Singura chestie rămasă erau alea de headere, greu de umblat prin ele. Și zona de Kafka — nu știu dacă trebuie aliniată, dar poate merită aliniată cu business rule-ul: e tot un body unde pui un JSON cu tot ce avem în DTO, key etc."
+ ],
+ [
+  "F",
+  "1:09:04",
+  "O să punem o variantă aliniată. Zi-mi așa, overall, cum ți se pare?"
+ ],
+ [
+  "P",
+  "1:09:12",
+  "Mă ajută, it speeds up the process — chiar e mai utilă zona asta acum. Înainte era foarte enervant: dădeai 50.000 de click-uri, deschideai, îl închideai, îl deschideai, ți se deschidea altceva. Și voiai să vezi canvas-ul — eu, când umblu prin noduri, mă uit prin canvas. Mă duceam în Process Designer, făceam chestia pe acțiune, și luam mult din view, mai ales cu un swimlane; se închidea drawer-ul de fiecare dată — un joc de du-te-vino."
+ ],
+ [
+  "F",
+  "1:10:21",
+  "Good. Îți mulțumim mult pentru timp. Mai venim. Dacă mai ai și vrei să te joci cu el, ne lași un feedback."
+ ]
+];
+
+const IDEAS = [
+ {
+  "id": "idea-01",
+  "title": "Losing work when the action drawer collapses without saving is the #1 friction",
+  "title_ro": "Pierderea muncii când drawer-ul de acțiuni se închide fără salvare e fricțiunea #1",
+  "category": "pain_point",
+  "topics": [
+   "Save & autosave",
+   "Business rules & data flow"
+  ],
+  "detail": "In the old flow the action drawer had no autosave and the explicit Save was easy to miss; a stray collapse or defocus (e.g. switching to check another environment) silently discarded whatever business rule you were writing. Dragos names this his biggest pain across every process.",
+  "detail_ro": "În fluxul vechi, drawer-ul de acțiuni nu avea autosave, iar Save-ul explicit era ușor de ratat; un collapse sau defocus întâmplător (ex. când comutai să verifici alt mediu) arunca în tăcere business rule-ul pe care-l scriai. Dragos numește asta cel mai mare pain al lui, în toate procesele.",
+  "quote": "eu niciodată nu apăsam save, că save-ul ăla era cumva scos. Și dădeam collapse din greșeală… când dai collapse, nu se salvează nimic.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   1,
+   3,
+   5,
+   14
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-02",
+  "title": "The redesigned node-config panel is much cleaner than the old drawer",
+  "title_ro": "Panoul de node-config redesenat e mult mai clean decât drawer-ul vechi",
+  "category": "design_insight",
+  "topics": [
+   "Redesigned node-config panel"
+  ],
+  "detail": "First impression of moving the drawer into a split node-config panel was strongly positive: actions are visible and directly accessible instead of buried, which he expects to help the heavy upload-file flows with many business rules.",
+  "detail_ro": "Prima impresie la mutarea drawer-ului într-un panou de node-config splituit a fost puternic pozitivă: acțiunile sunt la vedere și accesibile direct, nu îngropate, ceea ce se așteaptă să ajute la fluxurile grele de upload cu multe business rules.",
+  "quote": "parcă am luat drawer-ul și s-a mutat într-un node config… wow, e mult mai clean. Nu mai stai să te pierzi în drawer-ul ăla și poți accesa direct acțiunea.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   32,
+   72,
+   34
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-03",
+  "title": "Expect the right-hand panel to autosave — at least name/metadata on focus-out",
+  "title_ro": "Se așteaptă ca panoul din dreapta să facă autosave — cel puțin name/metadata la focus-out",
+  "category": "feature_request",
+  "topics": [
+   "Save & autosave",
+   "Redesigned node-config panel"
+  ],
+  "detail": "He expects rename and metadata fields to persist on focus-out (save-as-you-type), and ideally the whole panel to save intercalat as he jumps between subprocess/main process/other environments. He is fine with explicit save for checkbox-style config, but not for names.",
+  "detail_ro": "Se așteaptă ca rename-ul și câmpurile de metadata să persiste la focus-out (save-as-you-type), iar ideal întregul panou să salveze intercalat, pe măsură ce sare între subproces/main proces/alte medii. E ok cu save explicit pentru configurări de tip checkbox, dar nu pentru nume.",
+  "quote": "mă aștept să facă save as you type, și când dau focus-out se salvează… cel puțin la name și la metadata, vreau să dau rename fără să stau să dau save.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   38,
+   40,
+   42,
+   80
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-04",
+  "title": "The business-rule overlay 'Save' is really 'keep changes' — the copy is the core problem",
+  "title_ro": "«Save»-ul din overlay-ul de business rule e de fapt «keep changes» — copy-ul e problema centrală",
+  "category": "naming_copy",
+  "topics": [
+   "Naming & copy",
+   "Save & autosave"
+  ],
+  "detail": "Dragos and Diana converge: the Save button in the business-rule overlay doesn't persist the action, it just remembers the in-progress edits until the action's final save. The label should say 'keep changes', not 'save' — he calls the copy here the single biggest problem.",
+  "detail_ro": "Dragos și Diana converg: butonul Save din overlay-ul de business rule nu salvează acțiunea, doar ține minte modificările în lucru până la save-ul final al acțiunii. Label-ul ar trebui să fie «keep changes», nu «save» — el numește copy-ul de aici cea mai mare problemă.",
+  "quote": "copy-ul de aici e cea mai mare problemă… dacă e «keep changes» știu că mi-am configurat jumate din business rule, mai vreau să testez niște chei, și nu trebuie să rescriu tot.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   75,
+   78,
+   86
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-05",
+  "title": "'Discard changes' on exit is misleading — you saved the params, not the action",
+  "title_ro": "«Discard changes» la ieșire induce în eroare — ai salvat parametrii, nu acțiunea",
+  "category": "pain_point",
+  "topics": [
+   "Save & autosave",
+   "Naming & copy"
+  ],
+  "detail": "On the current prod behavior, after clicking save on the params/data mapping, exiting shows 'discard changes'. The user believes they saved the action, but the discard applies to the (unsaved) action, not the params — a confusing mismatch between what was saved and what the dialog threatens to drop.",
+  "detail_ro": "Pe behavior-ul actual din prod, după ce dai save pe parametri/data mapping, la ieșire apare «discard changes». Userul crede că a salvat acțiunea, dar discard-ul e la acțiunea (nesalvată), nu la parametri — o nepotrivire derutantă între ce s-a salvat și ce amenință dialogul că aruncă.",
+  "quote": "ai impresia că ai salvat acțiunea, dar el te întreabă de discard — și tu de fapt dai discard la acțiune, nu la parametri, deși n-ai salvat-o.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   76
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-06",
+  "title": "Kafka/data-stream metadata (e.g. topic) is lost on save, same as the body",
+  "title_ro": "Metadata de Kafka/data-stream (ex. topic) se pierde la save, la fel ca body-ul",
+  "category": "pain_point",
+  "topics": [
+   "Kafka & data streams",
+   "Save & autosave"
+  ],
+  "detail": "The save-loss problem isn't only the rule body: for data-streamer/Kafka actions you often add the topic after the first save, and that metadata (e.g. Kafka topic) is dropped too — you lose more than just the body.",
+  "detail_ro": "Problema pierderii la save nu e doar body-ul regulii: la acțiunile de data-streamer/Kafka pui adesea topic-ul după primul save, iar acea metadata (ex. Kafka topic) se pierde și ea — pierzi mai mult decât body-ul.",
+  "quote": "dai save, îți dai seama că trebuie să pui topic-ul, îl pui — și iar nu se salvează. Nu pierzi doar body-ul, pierzi și metadata gen Kafka topic.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   45
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-07",
+  "title": "Surface/search the environment's topic values inside data-stream config",
+  "title_ro": "Adu/caută values de topic ale mediului direct în config-ul de data-stream",
+  "category": "feature_request",
+  "topics": [
+   "Kafka & data streams"
+  ],
+  "detail": "Topic values differ per environment and configurators shouldn't leave the platform to fetch them. He wants the environment's topic values (and keys) correlated and searchable inside the data-stream config so you don't switch away to look them up and come back.",
+  "detail_ro": "Values de topic diferă de la mediu la mediu, iar configuratorii n-ar trebui să iasă din platformă ca să le ia. Vrea ca values de topic ale mediului (și cheile) să fie corelate și căutabile direct în config-ul de data-stream, ca să nu mai comuți ca să le cauți și să te întorci.",
+  "quote": "ar fi ideal ca la zona de data stream să corelăm values alea care vin din UI și să se reflecte acolo, ca să nu mai umbli… un search cu valorile care există.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   47,
+   50
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-08",
+  "title": "A stream's double-save (mapping + stream) is acceptable — you configure a stream once",
+  "title_ro": "Dublul save al unui stream (mapare + stream) e acceptabil — un stream îl configurezi o dată",
+  "category": "design_decision",
+  "topics": [
+   "Save & autosave",
+   "Kafka & data streams"
+  ],
+  "detail": "Asked whether the mapping-modal save plus the stream save re-creates the old trap, Dragos says no: a data stream is configured once, unlike a business rule you edit thousands of times — so the extra save doesn't bother him here.",
+  "detail_ro": "Întrebat dacă save-ul din modala de mapare plus save-ul stream-ului recreează capcana veche, Dragos spune că nu: un data stream se configurează o dată, spre deosebire de un business rule pe care-l editezi de mii de ori — deci save-ul în plus nu-l deranjează aici.",
+  "quote": "un data stream îl configurezi o dată and that's it. În schimb business rule-ul poți să-l modifici de 50.000 de ori.",
+  "speaker": "P",
+  "confidence": "medium",
+  "needs": false,
+  "anchors": [
+   58,
+   62
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-09",
+  "title": "'Save data' shouldn't be a child action — save runs last, and ordering matters",
+  "title_ro": "«Save data» n-ar trebui să fie child action — save-ul rulează ultimul, iar ordinea contează",
+  "category": "design_insight",
+  "topics": [
+   "Business rules & data flow",
+   "Redesigned node-config panel"
+  ],
+  "detail": "The prototype let a business rule sit as a child of 'save', which confused him: in a user task the save is bound automatically and should execute last, after the form and validations. He recalls an explicit 'order' field that used to sit between name and action type; execution now follows list order. (Diana will verify with product whether child-of-save is intended.)",
+  "detail_ro": "Prototipul lăsa un business rule ca child al lui «save», ceea ce l-a derutat: într-un user task, save-ul se bind-uiește automat și ar trebui să ruleze ultimul, după form și validări. Își amintește un câmp «order» explicit care stătea între name și action type; execuția urmează acum ordinea din listă. (Diana verifică cu product dacă child-of-save e intended.)",
+  "quote": "e weird să ai «save data» ca child action, pentru că save-ul teoretic e ultimul care se execută, după ce completezi tot și trec validările.",
+  "speaker": "P",
+  "confidence": "medium",
+  "needs": false,
+  "anchors": [
+   65,
+   66,
+   69
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-10",
+  "title": "A new action should append to the queue (drag to reorder), not jump to the top",
+  "title_ro": "O acțiune nouă ar trebui adăugată la coadă (drag pentru reordonare), nu în capul listei",
+  "category": "feature_request",
+  "topics": [
+   "Redesigned node-config panel"
+  ],
+  "detail": "When adding a new (non-child) action he expects it appended at the end of the queue, then dragged into position — putting it at top-of-list is weird when he already has a configured hierarchy and the drag handles are obvious.",
+  "detail_ro": "Când adaugă o acțiune nouă (nu child), se așteaptă să fie pusă la coada listei, apoi trasă la poziție — a o pune în capul listei e weird când deja are o ierarhie configurată, iar handle-urile de drag sunt evidente.",
+  "quote": "mă aștept să o pun în coadă, în queue, și apoi să o iau cu drag and drop… mi se pare weird să o bage top of the list.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   69,
+   103
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-11",
+  "title": "Large headers (JWT, workspace ID) are painful to edit — needs an expand/editor",
+  "title_ro": "Headerele mari (JWT, workspace ID) sunt greu de editat — trebuie un expand/editor",
+  "category": "feature_request",
+  "topics": [
+   "Callbacks & headers"
+  ],
+  "detail": "Some actions need many/large headers — starting a process over Kafka needs a JWT, a FlowX header and a workspace ID (a huge UUID string) — and the current header field is cramped ('un pic stretch'). He wants an expand/editor for the headers area, and thinks it would also help the callback case.",
+  "detail_ro": "Unele acțiuni au nevoie de headere multe/mari — pornirea unui proces prin Kafka cere un JWT, un FlowX header și un workspace ID (un string UUID uriaș) — iar câmpul actual de header e înghesuit («un pic stretch»). Vrea un expand/editor pentru zona de headere, și crede că ar ajuta și cazul de callback.",
+  "quote": "e un pic stretch aici cu headers… ca să pornești un proces prin Kafka ai nevoie de un JWT, un FlowX header, workspace ID — sunt headere mari… dacă am putea face un editor pe zona asta de headers.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": true,
+  "q": "„GVT” — a fost spus «JWT» (JSON Web Token) sau e un nume specific de header FlowX?",
+  "anchors": [
+   107,
+   109,
+   111,
+   115
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-12",
+  "title": "Keep headers free-form, not selectors — custom integrations vary too much",
+  "title_ro": "Ține headerele free-form, nu selectoare — integrările custom variază prea mult",
+  "category": "design_insight",
+  "topics": [
+   "Callbacks & headers"
+  ],
+  "detail": "Asked whether the header code could become selectors/inputs, he pushes back: for something like a JWT it's hard to bind a selector in a tree, and users have their own custom integration headers — better to leave it free-form.",
+  "detail_ro": "Întrebat dacă codul de header ar putea deveni selectoare/input-uri, respinge ideea: pentru ceva ca un JWT e greu să legi un selector într-un tree, iar userii au headerele lor de integrări custom — mai bine lăsat free-form.",
+  "quote": "e greu să pui selectorul ca opțiune într-un tree… userii au integrări custom, cu headerele lor definite în Kafka… mai degrabă lăsat free form.",
+  "speaker": "P",
+  "confidence": "medium",
+  "needs": false,
+  "anchors": [
+   113
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-13",
+  "title": "Diagram building is gated — you must place nodes before you can connect them",
+  "title_ro": "Construcția diagramei e blocată — trebuie să pui nodurile înainte să le poți conecta",
+  "category": "pain_point",
+  "topics": [
+   "Diagram building"
+  ],
+  "detail": "He finds it frustrating that today you must place all nodes first and only then wire connections — you can't build the flow as you go (gateway → user task → …). This is especially painful in footer/header areas configured strictly with gateways that must be reconnected afterwards; the proposed click-node→new interaction is a big win.",
+  "detail_ro": "I se pare frustrant că azi trebuie să pui întâi toate nodurile și abia apoi să tragi conexiunile — nu poți construi flow-ul pe măsură ce mergi (gateway → user task → …). E deosebit de dureros în zonele de footer/header configurate strict cu gateway-uri, care trebuie reconectate după; interacțiunea propusă click-node→new e un mare plus.",
+  "quote": "trebuie să ai nodurile pe diagramă puse și abia după aia poți face conexiunea… la zonele de footer și header… trebuie să le reconectezi după. Nu, e super nice ăsta.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   137,
+   139
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-14",
+  "title": "The gateway/node visual cue finally 'sare în ochi' — a real improvement",
+  "title_ro": "Indiciul vizual de gateway/nod în sfârșit «sare în ochi» — o îmbunătățire reală",
+  "category": "design_insight",
+  "topics": [
+   "Diagram building",
+   "Redesigned node-config panel"
+  ],
+  "detail": "The exclusive-gateway preview (fix expression / true / else, node selectors preserved) and the renamed node give him a clear visual cue he didn't have before — it stands out at a glance.",
+  "detail_ro": "Preview-ul de exclusive-gateway (fix expression / true / else, cu selectoarele de noduri păstrate) și nodul redenumit îi dau un indiciu vizual clar pe care nu-l avea înainte — sare în ochi dintr-o privire.",
+  "quote": "în sfârșit am un visual cue, chiar sare în ochi.",
+  "speaker": "P",
+  "confidence": "medium",
+  "needs": false,
+  "anchors": [
+   117,
+   123
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-15",
+  "title": "The process-nodes side panel is too verbose — minimize by default, use hover/info icons",
+  "title_ro": "Panoul lateral de process-nodes e prea verbose — minimize by default, cu iconițe hover/info",
+  "category": "feature_request",
+  "topics": [
+   "Panel layout & space"
+  ],
+  "detail": "The left process-nodes list eats screen and its descriptions are too verbose with a tiny font nobody reads. He'd replace the per-node bio with a small info point (e.g. hover on a service task) and is fine with the panels being minimized by default — he already minimizes them often to see the swimlane structure.",
+  "detail_ro": "Lista din stânga de process-nodes mănâncă din ecran, iar descrierile sunt prea verbose, cu un font super mic pe care nu-l citește nimeni. Ar înlocui bio-ul per nod cu un mic info point (ex. hover pe un service task) și e ok ca panourile să fie minimizate by default — oricum le minimizează des ca să vadă structura de swimlane-uri.",
+  "quote": "sunt cam verbose… fontul e super tiny, nu cred că stă cineva să citească ce face nodul. Mai degrabă un info point… e more than enough.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   129,
+   131,
+   133,
+   135
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-16",
+  "title": "Don't edit an action from UI Designer in isolation — open it in Process Designer for context",
+  "title_ro": "Nu edita o acțiune din UI Designer izolat — deschide-o în Process Designer, pentru context",
+  "category": "design_decision",
+  "topics": [
+   "UI–Process consistency",
+   "Redesigned node-config panel"
+  ],
+  "detail": "Editing an action reached from UI Designer loses the tree of actions on the node and the canvas context (is it integrated where? boundary? attachments?), which he finds confusing. He'd rather it open the full action panel in Process Designer — ideally in a new tab — since in practice he only renames from here, never edits config in depth.",
+  "detail_ro": "Editarea unei acțiuni ajunsă din UI Designer pierde tree-ul de acțiuni de pe nod și contextul de canvas (unde e integrată? boundary? atașamente?), ceea ce i se pare confusing. Ar prefera să deschidă panoul complet de acțiune în Process Designer — ideal într-un tab nou — pentru că, în practică, de aici doar redenumește, nu editează config în profunzime.",
+  "quote": "nu-mi dau seama de context — n-am nici nodul, nici canvas-ul… aș lăsa direct cum era înainte: să-mi deschid action panel-ul… dar să mi-l deschidă în Process Designer, ca să nu fie confusing.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   174,
+   175
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-17",
+  "title": "Aligning hide-condition & permissions editors with the node-action panel makes sense",
+  "title_ro": "Alinierea editoarelor de hide-condition & permissions cu panoul de node-action are sens",
+  "category": "design_insight",
+  "topics": [
+   "UI–Process consistency",
+   "Panel layout & space"
+  ],
+  "detail": "He supports reusing the node-action behavior for UI Designer hide-conditions and permissions since they're all JS/Python expressions — and the old tiny expression screen was painful. For many hide/disable permissions across swimlanes he wants the same granular card view as the node action, seen at a glance.",
+  "detail_ro": "Susține reutilizarea behavior-ului de node-action pentru hide-condition-urile și permissions din UI Designer, fiindcă toate sunt expresii JS/Python — iar vechiul ecran mic de expresii era dureros. Pentru multe permissions de hide/disable pe swimlane-uri, vrea aceeași vizualizare granulară de card ca la node action, la o privire.",
+  "quote": "și la node action și business rule, astea sunt JavaScript expressions… mult mai clean să am, ca la node action, granulele astea cu ce am configurat.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   141,
+   145
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-18",
+  "title": "Kafka body-in-panel (no test/modal) is fine now — but align it with the business-rule editor & keep backwards-compat",
+  "title_ro": "Body-ul de Kafka în panou (fără test/modală) e ok acum — dar aliniază-l cu editorul de business rule și păstrează backwards-compat",
+  "category": "design_decision",
+  "topics": [
+   "Kafka & data streams",
+   "UI–Process consistency"
+  ],
+  "detail": "He's ok with the Kafka body living inline with no test button, since the heaviest payloads (document-plugin) are going away. But because both a business rule and a Kafka message are 'just a body/payload', he'd align the Kafka editor with the business-rule editor — while keeping the old Kafka way for configurators who rely on it.",
+  "detail_ro": "E ok ca body-ul de Kafka să stea inline, fără buton de test, fiindcă cele mai grele payload-uri (document-plugin) dispar. Dar, cum și un business rule și un mesaj Kafka sunt «doar un body/payload», ar alinia editorul de Kafka cu cel de business rule — păstrând totuși modul vechi de Kafka pentru configuratorii care se bazează pe el.",
+  "quote": "Kafka e tot un payload… poate merită aliniat cu business rule-ul, problema e tot un body unde pui un JSON cu tot ce avem în DTO.",
+  "speaker": "P",
+  "confidence": "medium",
+  "needs": false,
+  "anchors": [
+   94,
+   98,
+   100,
+   178
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-19",
+  "title": "Panel width is fine; no resize needed; modal position should follow the action's position",
+  "title_ro": "Lățimea panoului e ok; fără resize; poziția modalei ar trebui să urmeze poziția acțiunii",
+  "category": "design_insight",
+  "topics": [
+   "Panel layout & space"
+  ],
+  "detail": "He sees no need to resize the action-config panel (a trigger execution plus at most the code editor; expands work fine). Density is acceptable — configurators are mostly developers on 16-inch+ desktops. He also confirmed the intended behavior that a modal opens near the action's position in the list.",
+  "detail_ro": "Nu vede nevoia de resize la panoul de action-config (un trigger execution și maxim code editor-ul; expand-urile merg bine). Densitatea e acceptabilă — configuratorii sunt mostly developeri pe desktop-uri de 16 inch+. A confirmat și behavior-ul intended, ca modala să se deschidă lângă poziția acțiunii din listă.",
+  "quote": "nu văd sensul la resize… ai un trigger execution și maxim code editor-ul; expand-urile work fine.",
+  "speaker": "P",
+  "confidence": "low",
+  "needs": false,
+  "anchors": [
+   127,
+   102
+  ],
+  "frame": false
+ },
+ {
+  "id": "idea-20",
+  "title": "Overall: the self-served panel speeds up the work and removes the old du-te-vino",
+  "title_ro": "Overall: panoul self-served accelerează munca și elimină vechiul du-te-vino",
+  "category": "design_insight",
+  "topics": [
+   "Redesigned node-config panel",
+   "Save & autosave"
+  ],
+  "detail": "His overall verdict is clearly positive: having everything self-served in one panel lets him configure without breaking flow, versus the old 50.000-clicks du-te-vino of opening/closing drawers, losing the canvas view, and re-losing work. Remaining asks: the headers editor and aligning the Kafka editor.",
+  "detail_ro": "Verdictul general e clar pozitiv: să ai totul self-served într-un panou îi permite să configureze fără să rupă flow-ul, față de vechiul du-te-vino de 50.000 de click-uri cu deschis/închis drawere, pierderea view-ului de canvas și re-pierderea muncii. Cereri rămase: editorul de headere și alinierea editorului de Kafka.",
+  "quote": "it speeds up the process… ai totul self-served, poți configura fără să te întrerupi din flow… înainte era foarte enervant, dădeai 50.000 de click-uri.",
+  "speaker": "P",
+  "confidence": "high",
+  "needs": false,
+  "anchors": [
+   177,
+   180
+  ],
+  "frame": false
+ }
+];
+
+// Romanian display labels for the per-session topic vocabulary (EN string = canonical
+// filter key; RO = display only). Missing keys fall back to the English label.
+const TOPICS_RO = {
+ "Save & autosave": "Save & autosave",
+ "Redesigned node-config panel": "Panoul de node-config redesenat",
+ "Naming & copy": "Denumiri & text",
+ "Business rules & data flow": "Business rules & flux de date",
+ "Kafka & data streams": "Kafka & data streams",
+ "Callbacks & headers": "Callback-uri & headere",
+ "Diagram building": "Construcția diagramei",
+ "Panel layout & space": "Layout & spațiu panou",
+ "UI–Process consistency": "Consistență UI–Process"
+};
+
+// Collapsed session summary shown atop the Ideas tab. A list of sections; each `kind`
+// (strengths | weaknesses | points) gets a fixed bilingual label from the template.
+// User-testing → strengths vs weaknesses; meeting → a single `points` list. Empty → hidden.
+const SUMMARY = [
+ {
+  "kind": "strengths",
+  "items": [
+   "The redesigned node-config panel reads as much cleaner — actions are self-served and directly accessible, not buried in a drawer.",
+   "Overall verdict: it speeds up the work and removes the old 50.000-clicks du-te-vino of opening/closing drawers.",
+   "Gateways/nodes finally have a visual cue that 'sare în ochi'.",
+   "Aligning hide-condition/permissions with the node-action panel makes sense — they're all JS/Python expressions.",
+   "Building the diagram via click-node→new (add without drag-and-drop) is a big win."
+  ],
+  "items_ro": [
+   "Panoul de node-config redesenat pare mult mai clean — acțiunile sunt self-served și accesibile direct, nu îngropate în drawer.",
+   "Verdict general: accelerează munca și elimină vechiul du-te-vino de 50.000 de click-uri cu deschis/închis drawere.",
+   "Gateway-urile/nodurile au în sfârșit un indiciu vizual care «sare în ochi».",
+   "Alinierea hide-condition/permissions cu panoul de node-action are sens — toate sunt expresii JS/Python.",
+   "Construcția diagramei prin click-node→new (adăugare fără drag-and-drop) e un mare plus."
+  ]
+ },
+ {
+  "kind": "weaknesses",
+  "items": [
+   "Biggest historical pain: losing work when the drawer collapses/defocuses without saving — body AND metadata (e.g. Kafka topic).",
+   "The overlay 'Save' is really 'keep changes'; the copy is the core problem.",
+   "'Discard changes' on exit is misleading — you saved the params, not the action.",
+   "Topic values should be searchable inside data-stream config so you don't leave the screen.",
+   "Large headers (JWT/workspace ID) are painful — need an expand/editor.",
+   "The process-nodes side panel is too verbose (tiny font); new actions jump to top instead of the queue.",
+   "Editing an action from UI Designer in isolation loses node/canvas context."
+  ],
+  "items_ro": [
+   "Cel mai mare pain istoric: pierderea muncii când drawer-ul se închide/defocusează fără salvare — body ȘI metadata (ex. Kafka topic).",
+   "«Save»-ul din overlay e de fapt «keep changes»; copy-ul e problema centrală.",
+   "«Discard changes» la ieșire induce în eroare — ai salvat parametrii, nu acțiunea.",
+   "Values de topic ar trebui căutabile în config-ul de data-stream, ca să nu ieși din ecran.",
+   "Headerele mari (JWT/workspace ID) sunt dureroase — trebuie un expand/editor.",
+   "Panoul lateral de process-nodes e prea verbose (font mic); acțiunile noi sar în capul listei, nu la coadă.",
+   "Editarea unei acțiuni din UI Designer izolat pierde contextul de nod/canvas."
+  ]
+ }
+];
+
+const REPAIRS = {
+ "auto": [
+  [
+   "Node Action · node config · action config",
+   "Node Action / node config / action config"
+  ],
+  [
+   "business rule · business rule-uri · body-ul de business rule",
+   "business rule / business rules"
+  ],
+  [
+   "sertar",
+   "drawer (sertar)"
+  ],
+  [
+   "BPMN editor · gateway · exclusive gateway · boundary event · sequence",
+   "BPMN / gateway / exclusive gateway / boundary event / sequence"
+  ],
+  [
+   "custom UI payload · message (rename ~5.1)",
+   "custom UI payload (fost „message”, redenumit ~5.1)"
+  ],
+  [
+   "send data to user interface · data binding · root component · data model",
+   "send data to user interface / data binding / root component / data model"
+  ],
+  [
+   "Kafka · data streamer · data stream · Kafka topic · topic values · document persist",
+   "Kafka / data stream / topic / topic values / document persist"
+  ],
+  [
+   "callback · callback action · child action · destination ID · destination node",
+   "callback / child action / destination ID / destination node"
+  ],
+  [
+   "Flox header · Flox",
+   "FlowX header"
+  ],
+  [
+   "Keycloak · token refresh",
+   "Keycloak / token refresh"
+  ],
+  [
+   "swimlane · back office · front office",
+   "swimlane / back office / front office"
+  ],
+  [
+   "hide condition · permissions · disable · JavaScript expressions · JS · Python",
+   "hide condition / permissions / disable / JavaScript / Python"
+  ],
+  [
+   "service task · user task · subproces · main proces · process stage",
+   "service task / user task / subproces / main proces / process stage"
+  ],
+  [
+   "copy resources · export-import · _duplicated · new ID",
+   "copy resources / export-import / _duplicated / new ID"
+  ],
+  [
+   "integration designer · Process Designer · UI Designer",
+   "integration designer / Process Designer / UI Designer"
+  ],
+  [
+   "save as you type · autosave · save explicit · focus-out",
+   "save-as-you-type / autosave / save explicit / focus-out"
+  ],
+  [
+   "the big menu · drag and drop · dropdown",
+   "the big menu / drag and drop / dropdown"
+  ],
+  [
+   "pam pam · bla bla bla · whatever (filler)",
+   "__DROP__"
+  ]
+ ],
+ "confirm": [
+  [
+   "„enon” (01:35)",
+   "«enervant» — reconstruit din context (frustrarea cu save-ul)"
+  ],
+  [
+   "„nu e type save, e corect sau save as type” (01:35)",
+   "«nu era un auto-save, ci un save explicit» — reconstruit"
+  ],
+  [
+   "„structura de staj” (50:20)",
+   "«structura de stage-uri» (sau swimlane-uri) — reconstruit"
+  ],
+  [
+   "labeluri de vorbitor în a doua jumătate (24:00–01:10)",
+   "Diarizarea acustică a spart cele 3 persoane în 5 clustere (phantom speakers). Le-am colapsat pe P/F/B după gen + conținut; liniile de facilitator din jumătatea a doua sunt atribuite Dianei (care conduce walkthrough-ul), Raluca fiind clară la început (0–6 min) și la maparea/overlay-ul de ~20 min. De confirmat dacă vreo replică din partea a doua e de fapt a Ralucăi."
+  ]
+ ],
+ "query": [
+  [
+   "„GVT” (42:00, 43:59)",
+   "A fost spus «JWT» (JSON Web Token) sau e un nume specific de header FlowX? (Dragos îl folosește ca header necesar la start de proces prin Kafka.)"
+  ],
+  [
+   "„marketing advisor” (24:40)",
+   "Dragos deschide un business rule vechi numit așa ca exemplu — e un nume real de regulă din mediul lui? (nu afectează niciun insight)"
+  ]
+ ]
+};
+
+const turnToIdeas={};
+IDEAS.forEach(it=>it.anchors.forEach(a=>{(turnToIdeas[a]=turnToIdeas[a]||[]).push(it.id);}));
+const ORIG={};IDEAS.forEach(it=>{ORIG[it.id]=it;});
+const REVIEW={edits:{},notes:{},repairComments:{},repairSectionNote:"",turnComments:{},reportNote:""};
+function effective(it){return Object.assign({},it,REVIEW.edits[it.id]||{});}
+const SPK={"P": "Dragos", "F": "Diana", "B": "Raluca", "O": "—"};
+
+// Session provenance — flattened onto every exported insight so each one is
+// self-describing in a cross-session pool. `id` (slug <feature>-<date>) is the namespace.
+const SESSION={"id": "process-actions-dragos-2026-07-06", "feature": "Process Actions Redesign", "date": "2026-07-06", "participant": "Dragos"};
+
+// Screen-context frames — base64 JPEG keyed by idea id; ideas with frame:true render a
+// "⌖ view frame" toggle. Empty by default; filled per session when a recording is on disk.
+const FRAMES = {};
+
+// ---- Language (EN/RO) — switches the ANALYSIS only (card title/detail/topics,
+// category & confidence labels, masthead, note box). Quotes, speaker names, and all
+// UI chrome stay English. RO falls back to EN wherever a *_ro value is absent. ----
+const CAT_RO={pain_point:"problemă",feature_request:"cerere de funcționalitate",naming_copy:"denumire & text",design_decision:"decizie de design",design_insight:"insight de design",open_question:"întrebare deschisă",context:"context"};
+const CONF_RO={high:"ridicată",medium:"medie",low:"scăzută"};
+const TOPICS_RO_MAP=(typeof TOPICS_RO!=='undefined')?TOPICS_RO:{};
+let lang=(()=>{try{return localStorage.getItem('mi-lang')==='ro'?'ro':'en';}catch(e){return 'en';}})();
+function disp(it,key){if(lang==='ro'){const v=it[key+'_ro'];if(v!=null&&v!=='')return v;}return it[key];}
+function localizeTopic(t){return (lang==='ro'&&TOPICS_RO_MAP[t])?TOPICS_RO_MAP[t]:t;}
+function catLabel(c){return (lang==='ro'&&CAT_RO[c])?CAT_RO[c]:c.replace('_',' ');}
+function confLabel(c){return (lang==='ro'&&CONF_RO[c])?CONF_RO[c]:c;}
+function langKey(base){return lang==='ro'?base+'_ro':base;}
+function catOptLabel(c){return c==='all'?(lang==='ro'?'Toate categoriile':'All categories'):catLabel(c);}
+function topicOptLabel(t){return t==='all'?(lang==='ro'?'Toate subiectele':'All topics'):localizeTopic(t);}
+// Session-summary section labels (keyed by kind) + caption — fixed, bilingual.
+const SUM_LABELS={strengths:{en:"Strengths",ro:"Puncte forte"},weaknesses:{en:"Weak points",ro:"Puncte slabe"},points:{en:"Key points",ro:"Puncte principale"}};
+const SUM_CAP={en:"Session summary",ro:"Rezumatul sesiunii"};
+function sumLabel(kind){const l=SUM_LABELS[kind];return l?(lang==='ro'?l.ro:l.en):kind;}
+function sumItems(sec){return (lang==='ro'&&sec.items_ro&&sec.items_ro.length)?sec.items_ro:(sec.items||[]);}
+function renderSummary(){
+  const box=document.getElementById('summaryBox');if(!box)return;
+  const secs=(typeof SUMMARY!=='undefined'?SUMMARY:[]).filter(s=>s&&(s.items||[]).length);
+  if(!secs.length){box.style.display='none';return;}
+  box.style.display='';
+  document.getElementById('sum-cap').textContent=lang==='ro'?SUM_CAP.ro:SUM_CAP.en;
+  document.getElementById('sum-body').innerHTML=secs.map(s=>
+    `<div class="sum-sec ${s.kind}"><h4>${esc(sumLabel(s.kind))}</h4><ul>${sumItems(s).map(it=>`<li>${esc(it)}</li>`).join('')}</ul></div>`).join('');
+}
+function applyMastLang(){
+  document.querySelectorAll('[data-ro]').forEach(el=>{
+    if(el.dataset.en==null)el.dataset.en=el.innerHTML;
+    el.innerHTML=(lang==='ro'&&el.dataset.ro)?el.dataset.ro:el.dataset.en;});
+}
+function setLang(l){
+  lang=(l==='ro')?'ro':'en';
+  try{localStorage.setItem('mi-lang',lang);}catch(e){}
+  document.getElementById('lang-en').setAttribute('aria-pressed',lang==='en');
+  document.getElementById('lang-ro').setAttribute('aria-pressed',lang==='ro');
+  document.documentElement.lang=lang;
+  applyMastLang();
+  renderSummary();
+  // relabel filter dropdowns — values are unchanged, so the active filter is preserved
+  sel.querySelectorAll('option').forEach(o=>o.textContent=catOptLabel(o.value));
+  topicSel.querySelectorAll('option').forEach(o=>o.textContent=topicOptLabel(o.value));
+  // re-render every card not currently being edited
+  IDEAS.forEach(it=>{const card=document.getElementById('c-'+it.id);
+    if(card&&!card.classList.contains('editing'))rerenderCard(it.id);});
+  applyFilter();
+  if(document.getElementById('exportPanel').classList.contains('show'))renderOut();
+}
+
+const scriptEl=document.getElementById('script');
+TURNS.forEach((t,i)=>{
+  const d=document.createElement('div');
+  d.className='turn '+t[0]+(turnToIdeas[i]?' anchored':'');
+  d.id='t-'+i;
+  d.innerHTML=`<div class="meta-r"><span class="spk">${SPK[t[0]]}</span><span class="ts mono">${t[1]}</span></div><span class="txt">${t[2]}</span>`;
+  if(turnToIdeas[i]) d.addEventListener('click',e=>{ if(e.target.classList.contains('unsure'))return; locate(turnToIdeas[i][0],true); });
+  const btn=document.createElement('button');btn.className='rowtool';btn.textContent='💬';
+  btn.title='Comment on this line';
+  btn.addEventListener('click',e=>{e.stopPropagation();toggleTurnComment(i,d);});
+  d.appendChild(btn);
+  scriptEl.appendChild(d);
+});
+
+const kept=new Set(IDEAS.map(i=>i.id)); // all cards included by default
+const ideasEl=document.getElementById('ideas');
+function titleOf(id){const x=IDEAS.find(i=>i.id===id);return x?disp(x,'title'):id;}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function cardHTML(it){
+  const q=it.needs?`<div class="query"><b>?</b><div><b>Needs confirmation — </b>${it.q}</div></div>`:'';
+  const src=TURNS[it.anchors[0]][1];
+  const nturns=it.anchors.length>1?`<span class="srcn"> · ${it.anchors.length} lines</span>`:'';
+  const topics=(it.topics&&it.topics.length)?`<div class="topics">${it.topics.map(t=>`<span class="topic">${esc(localizeTopic(t))}</span>`).join('')}</div>`:'';
+  const tension=(it.conflictsWith&&it.conflictsWith.length)?`<div class="tension"><span class="tlabel">⚡ In tension with</span>${it.conflictsWith.map(cid=>`<button class="tlink" onclick="event.stopPropagation();locate('${cid}',true)">${titleOf(cid)}</button>`).join('')}</div>`:'';
+  const frame=(it.frame&&typeof FRAMES!=='undefined'&&FRAMES[it.id])?`<div class="framewrap"><button class="framebtn" onclick="event.stopPropagation();toggleFrame('${it.id}',this)">⌖ hide frame</button><figure class="frame" id="fr-${it.id}"><img loading="lazy" src="${FRAMES[it.id]}" alt="screen at ${src}"><figcaption>Screen at ${src}</figcaption></figure></div>`:'';
+  return `<input type="checkbox" class="keep"${kept.has(it.id)?' checked':''} onchange="toggle('${it.id}',this.checked)" onclick="event.stopPropagation()" aria-label="keep">
+    <div>
+      <div class="tagrow">
+        <span class="tag ${it.category}">${esc(catLabel(it.category))}</span>
+        <span class="conf ${it.confidence}"><span class="dot"></span>${esc(confLabel(it.confidence))}</span>
+        <span class="src">⌖ ${src}${nturns}</span>
+      </div>
+      <h3>${esc(disp(it,'title'))}</h3>
+      <p class="detail">${esc(disp(it,'detail'))}</p>
+      <blockquote class="quote">“${esc(it.quote)}”</blockquote>
+      <div class="who">${SPK[it.speaker]==='Facil.'?'Facilitator':SPK[it.speaker]}</div>
+      ${q}
+      ${tension}
+      ${topics}
+      ${frame}
+    </div>`;
+}
+function toggleFrame(id,btn){const f=document.getElementById('fr-'+id);const nowHidden=f.classList.toggle('hidden');btn.textContent=nowHidden?'⌖ view frame':'⌖ hide frame';}
+// every id involved in a conflict (own links + cards others link to), for the filter
+const conflictIds=new Set();
+IDEAS.forEach(it=>(it.conflictsWith||[]).forEach(cid=>{conflictIds.add(it.id);conflictIds.add(cid);}));
+IDEAS.forEach(it=>{
+  const card=document.createElement('div');
+  card.className='card';card.id='c-'+it.id;card.dataset.cat=it.category;
+  card.dataset.topics=(it.topics||[]).join('|');
+  card.dataset.conflict=conflictIds.has(it.id)?'1':'';
+  card.addEventListener('click',()=>{if(card.classList.contains('editing'))return;locate(it.id,false);});
+  ideasEl.appendChild(card);
+  rerenderCard(it.id);
+});
+refresh(); // seed kept counters (all cards included by default)
+
+// category + topic filters (ANDed)
+const cats=['all',...new Set(IDEAS.map(i=>i.category))];
+const sel=document.getElementById('catFilter');
+cats.forEach(c=>{const o=document.createElement('option');o.value=c;
+  o.textContent=catOptLabel(c);sel.appendChild(o);});
+const topicSel=document.getElementById('topicFilter');
+const topicList=['all',...new Set(IDEAS.flatMap(i=>i.topics||[]))];
+topicList.forEach(t=>{const o=document.createElement('option');o.value=t;
+  o.textContent=topicOptLabel(t);topicSel.appendChild(o);});
+let conflictsOnly=false;
+function toggleConflicts(){conflictsOnly=!conflictsOnly;
+  document.getElementById('conflictToggle').setAttribute('aria-pressed',conflictsOnly);applyFilter();}
+function applyFilter(){const c=sel.value,t=topicSel.value;
+  document.querySelectorAll('.card').forEach(card=>{
+    const okCat=(c==='all'||card.dataset.cat===c);
+    const okTopic=(t==='all'||(card.dataset.topics||'').split('|').includes(t));
+    const okConflict=(!conflictsOnly||card.dataset.conflict==='1');
+    card.style.display=(okCat&&okTopic&&okConflict)?'':'none';});}
+
+const repEl=document.getElementById('repairs');
+function repSection(title,arr,bucket){
+  const sec=document.createElement('div');sec.className='repsec';
+  const rows=arr.map(([o,f])=>{
+    if(bucket==='query')return `<div class="rep"><span class="b query">query</span><span class="orig mono">${o}</span><span class="arrow">→</span><span class="qtext">${f}</span></div>`;
+    const fix=f==='__DROP__'?`<span class="fix drop mono">[dropped — fragments]</span>`:`<span class="fix mono">${f}</span>`;
+    return `<div class="rep"><span class="b ${bucket}">${bucket}</span><span class="orig mono">${o}</span><span class="arrow">→</span>${fix}</div>`;
+  }).join('');
+  sec.innerHTML=`<h2>${title} <button class="sectool" data-bucket="${bucket}">💬 comment on this section</button></h2>${rows}`;
+  repEl.appendChild(sec);
+  // section comment
+  sec.querySelector('.sectool').addEventListener('click',e=>toggleSectionComment(bucket,sec));
+  // per-row comment tools
+  sec.querySelectorAll('.rep').forEach((row,i)=>{
+    const orig=arr[i][0];
+    const btn=document.createElement('button');btn.className='rowtool';btn.textContent='💬';
+    btn.title='Comment on this repair';
+    btn.addEventListener('click',()=>toggleRepairComment(bucket,orig,row));
+    row.appendChild(btn);
+  });
+}
+repSection('Applied confidently',REPAIRS.auto,'auto');
+repSection('Best guess — confirm',REPAIRS.confirm,'confirm');
+repSection('Needs your input',REPAIRS.query,'query');
+
+const repCount=REPAIRS.auto.length+REPAIRS.confirm.length+REPAIRS.query.length;
+set('m-ideas',IDEAS.length);set('m-rep',repCount);
+set('m-query',REPAIRS.query.length+IDEAS.filter(i=>i.needs).length);
+function set(id,v){document.getElementById(id).textContent=v;}
+
+let activeCard=null;
+function locate(id,fromTranscript){
+  const it=IDEAS.find(x=>x.id===id);if(!it)return;
+  document.querySelectorAll('.turn.hl,.turn.hl-primary').forEach(e=>e.classList.remove('hl','hl-primary'));
+  if(activeCard)document.getElementById('c-'+activeCard)?.classList.remove('active');
+  activeCard=id;
+  const card=document.getElementById('c-'+id);card.classList.add('active');
+  it.anchors.forEach((a,idx)=>{const tn=document.getElementById('t-'+a);if(tn)tn.classList.add(idx===0?'hl-primary':'hl');});
+  const first=document.getElementById('t-'+it.anchors[0]);if(first)first.scrollIntoView({behavior:'smooth',block:'center'});
+  if(fromTranscript)card.scrollIntoView({behavior:'smooth',block:'center'});
+  updateEdgeHints();
+}
+// Off-screen edge indicators: when the active idea's source turns sit outside the
+// visible transcript, show "N above / N below" pills that jump to the nearest one.
+const EDGE_PAD=4;
+function activeAnchorEls(){if(!activeCard)return[];const it=IDEAS.find(x=>x.id===activeCard);
+  return it?it.anchors.map(a=>document.getElementById('t-'+a)).filter(Boolean):[];}
+function updateEdgeHints(){
+  const up=document.getElementById('edge-up'),dn=document.getElementById('edge-dn');
+  const sc=document.getElementById('script'),scRect=sc.getBoundingClientRect();
+  let above=0,below=0;
+  activeAnchorEls().forEach(el=>{const r=el.getBoundingClientRect();
+    if(r.bottom<scRect.top+EDGE_PAD)above++;else if(r.top>scRect.bottom-EDGE_PAD)below++;});
+  up.classList.toggle('show',above>0);document.getElementById('edge-up-n').textContent=above+(above===1?' line':' lines');
+  dn.classList.toggle('show',below>0);document.getElementById('edge-dn-n').textContent=below+(below===1?' line':' lines');
+}
+function jumpEdge(dir){
+  const sc=document.getElementById('script'),scRect=sc.getBoundingClientRect();
+  const off=activeAnchorEls().map(el=>({el,r:el.getBoundingClientRect()}))
+    .filter(o=>dir<0?o.r.bottom<scRect.top+EDGE_PAD:o.r.top>scRect.bottom-EDGE_PAD);
+  if(!off.length)return;
+  const target=dir<0?off.reduce((a,b)=>b.r.top>a.r.top?b:a):off.reduce((a,b)=>b.r.top<a.r.top?b:a);
+  target.el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+(function(){let raf=0;const sc=document.getElementById('script');
+  const tick=()=>{raf=0;updateEdgeHints();};
+  sc.addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(tick);},{passive:true});
+  addEventListener('resize',()=>{if(!raf)raf=requestAnimationFrame(tick);});})();
+
+function toggle(id,on){on?kept.add(id):kept.delete(id);document.getElementById('c-'+id).classList.toggle('excluded',!on);refresh();commitReviewChange();}
+function refresh(){document.getElementById('m-kept').textContent=kept.size;
+  if(document.getElementById('exportPanel').classList.contains('show'))renderOut();}
+function selectAll(on){document.querySelectorAll('.card').forEach(card=>{ if(card.style.display==='none')return;
+  const cb=card.querySelector('.keep');cb.checked=on;const id=card.id.slice(2);on?kept.add(id):kept.delete(id);card.classList.toggle('excluded',!on);});refresh();commitReviewChange();}
+function showTab(t){['ideas','rep','how'].forEach(name=>{
+  document.getElementById('view-'+name).classList.toggle('hidden',name!==t);
+  document.getElementById('tab-'+name).setAttribute('aria-selected',name===t);});}
+
+let fmt='md';
+function openExport(){document.getElementById('exportPanel').classList.add('show');renderOut();document.getElementById('exportPanel').scrollIntoView({behavior:'smooth',block:'nearest'});}
+function closeExport(){document.getElementById('exportPanel').classList.remove('show');}
+function setFmt(f){fmt=f;document.getElementById('fmt-md').setAttribute('aria-pressed',f==='md');document.getElementById('fmt-json').setAttribute('aria-pressed',f==='json');renderOut();}
+function keptList(){return IDEAS.filter(i=>kept.has(i.id));}
+function renderOut(){document.getElementById('outBox').value=fmt==='md'?toMd():toJson();}
+function toJson(){return JSON.stringify(keptList().map(it=>{
+  const{id,title,title_ro,category,topics,detail,detail_ro,quote,speaker,confidence,needs,q,anchors}=it;
+  const row={id:SESSION.id+':'+id,session:SESSION.id,feature:SESSION.feature,date:SESSION.date,participant:SESSION.participant,
+    title,category,topics:topics||[],detail,evidence_quote:quote,speaker:SPK[speaker],confidence,
+    needs_confirmation:!!needs,question:q||null,timestamps:anchors.map(a=>TURNS[a][1])};
+  // bilingual fields (language-independent of the current view) for the downstream pool
+  if(title_ro)row.title_ro=title_ro;
+  if(detail_ro)row.detail_ro=detail_ro;
+  if(topics&&topics.length)row.topics_ro=topics.map(t=>TOPICS_RO_MAP[t]||t);
+  return row;}),null,2);}
+function toMd(){const list=keptList();if(!list.length)return "# Nothing kept yet — check some ideas.";
+  const g={};list.forEach(i=>{(g[i.category]=g[i.category]||[]).push(i);});
+  const label={pain_point:"Pain points",feature_request:"Feature requests",naming_copy:"Naming & copy",
+    design_decision:"Design decisions",design_insight:"Design insights",open_question:"Open questions",context:"Context"};
+  let out=`# ${SESSION.feature} — kept ideas (${list.length})\n_Session ${SESSION.id} · ${SESSION.date} · participant ${SESSION.participant}_\n`;
+  for(const c in g){out+=`\n## ${label[c]||c}\n`;g[c].forEach(i=>{out+=`- **${i.title}** — ${i.detail}\n  > ${i.quote}  _(${SPK[i.speaker]}, ${TURNS[i.anchors[0]][1]})_\n`;
+    if(i.topics&&i.topics.length)out+=`  > _Topics: ${i.topics.join(', ')}_\n`;
+    if(i.needs)out+=`  > _Needs confirmation: ${i.q}_\n`;});}
+  return out;}
+function copyOut(){const t=document.getElementById('outBox');t.select();navigator.clipboard.writeText(t.value).then(()=>toast('Copied'));}
+function downloadOut(){const blob=new Blob([document.getElementById('outBox').value],{type:fmt==='md'?'text/markdown':'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='kept-ideas.'+(fmt==='md'?'md':'json');a.click();URL.revokeObjectURL(a.href);toast('Downloaded');}
+// ---- Review round-trip ----
+const CATS=['pain_point','feature_request','naming_copy','design_decision','design_insight','open_question','context'];
+const CONFS=['high','medium','low'];
+function nonEmpty(s){return typeof s==='string'&&s.trim().length>0;}
+function changedFields(id){
+  const e=REVIEW.edits[id];if(!e)return{};const o=ORIG[id],out={};
+  for(const k in e){const a=k==='topics'?(o.topics||[]):o[k];
+    if(JSON.stringify(a)!==JSON.stringify(e[k]))out[k]=e[k];}
+  return out;
+}
+function buildPacket(){
+  const cards=[];
+  IDEAS.forEach(it=>{
+    const ch=changedFields(it.id),note=REVIEW.notes[it.id],excluded=!kept.has(it.id);
+    const hasEdit=Object.keys(ch).length>0;
+    if(hasEdit||excluded||nonEmpty(note)){const c={id:it.id};
+      if(excluded)c.excluded=true;if(hasEdit)c.edits=ch;if(nonEmpty(note))c.note=note.trim();cards.push(c);}
+  });
+  const repairs=[];
+  Object.keys(REVIEW.repairComments).forEach(key=>{const cm=REVIEW.repairComments[key];
+    if(!nonEmpty(cm))return;const ix=key.indexOf('\t');
+    repairs.push({bucket:key.slice(0,ix),orig:key.slice(ix+1),comment:cm.trim()});});
+  const turns=[];
+  Object.keys(REVIEW.turnComments).forEach(i=>{const cm=REVIEW.turnComments[i];
+    if(nonEmpty(cm))turns.push({i:+i,comment:cm.trim()});});
+  const p={session:SESSION.id};
+  if(nonEmpty(REVIEW.reportNote))p.report_note=REVIEW.reportNote.trim();
+  if(cards.length)p.cards=cards;
+  if(repairs.length)p.repairs=repairs;
+  if(nonEmpty(REVIEW.repairSectionNote))p.repair_section_note=REVIEW.repairSectionNote.trim();
+  if(turns.length)p.turns=turns;
+  return p;
+}
+function packetCounts(){
+  let edits=0,comments=0,excluded=0;
+  IDEAS.forEach(it=>{if(Object.keys(changedFields(it.id)).length)edits++;
+    if(!kept.has(it.id))excluded++;if(nonEmpty(REVIEW.notes[it.id]))comments++;});
+  Object.values(REVIEW.repairComments).forEach(c=>{if(nonEmpty(c))comments++;});
+  Object.values(REVIEW.turnComments).forEach(c=>{if(nonEmpty(c))comments++;});
+  if(nonEmpty(REVIEW.repairSectionNote))comments++;
+  if(nonEmpty(REVIEW.reportNote))comments++;
+  return {edits,comments,excluded};
+}
+function renderTally(){
+  const {edits,comments,excluded}=packetCounts();
+  const parts=[];
+  parts.push(`<em>${edits}</em> edit${edits===1?'':'s'}`);
+  parts.push(`<em>${comments}</em> comment${comments===1?'':'s'}`);
+  parts.push(`<em>${excluded}</em> excluded`);
+  document.getElementById('review-tally').innerHTML=parts.join(' · ');
+  document.getElementById('sendReview').disabled=(edits+comments+excluded===0);
+}
+function commitReviewChange(){renderTally();
+  if(document.getElementById('reviewPanel').classList.contains('show'))renderReview();}
+let rfmt='json';
+function packetToMd(p){
+  let o=`# Review for ${p.session}\n`;
+  if(p.report_note)o+=`\n**Report note:** ${p.report_note}\n`;
+  (p.cards||[]).forEach(c=>{o+=`\n## ${c.id}${c.excluded?' — EXCLUDED':''}\n`;
+    if(c.edits)for(const k in c.edits)o+=`- edit \`${k}\` → ${JSON.stringify(c.edits[k])}\n`;
+    if(c.note)o+=`- note: ${c.note}\n`;});
+  if(p.repairs&&p.repairs.length){o+=`\n## Repairs\n`;
+    p.repairs.forEach(r=>{o+=`- [${r.bucket}] \`${r.orig}\` — ${r.comment}\n`;});}
+  if(p.repair_section_note)o+=`\n**Repair-log note:** ${p.repair_section_note}\n`;
+  if(p.turns&&p.turns.length){o+=`\n## Transcript\n`;
+    p.turns.forEach(t=>{o+=`- turn ${t.i} (${TURNS[t.i]?TURNS[t.i][1]:'?'}): ${t.comment}\n`;});}
+  return o;
+}
+function renderReview(){const p=buildPacket();
+  document.getElementById('reviewBox').value=rfmt==='json'?JSON.stringify(p,null,2):packetToMd(p);}
+function openReview(){document.getElementById('reviewPanel').classList.add('show');renderReview();
+  document.getElementById('reviewPanel').scrollIntoView({behavior:'smooth',block:'nearest'});}
+function closeReview(){document.getElementById('reviewPanel').classList.remove('show');}
+function setReviewFmt(f){rfmt=f;document.getElementById('rfmt-json').setAttribute('aria-pressed',f==='json');
+  document.getElementById('rfmt-md').setAttribute('aria-pressed',f==='md');renderReview();}
+function copyReview(){const t=document.getElementById('reviewBox');t.select();
+  navigator.clipboard.writeText(t.value).then(()=>toast('Copied'));}
+function downloadReview(){const ext=rfmt==='json'?'json':'md';
+  const blob=new Blob([document.getElementById('reviewBox').value],
+    {type:rfmt==='json'?'application/json':'text/markdown'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='review-'+SESSION.id+'.'+ext;a.click();URL.revokeObjectURL(a.href);toast('Downloaded');}
+renderTally();
+function rerenderCard(id){
+  const it=IDEAS.find(x=>x.id===id);const card=document.getElementById('c-'+id);
+  card.classList.remove('editing');
+  card.innerHTML=cardHTML(effective(it));
+  attachCardTools(card,it);applyCardState(card,id);
+}
+function applyCardState(card,id){
+  const edited=Object.keys(changedFields(id)).length>0;
+  card.classList.toggle('has-edit',edited);
+  card.classList.toggle('has-note',nonEmpty(REVIEW.notes[id]));
+  card.classList.toggle('excluded',!kept.has(id));
+  const body=card.querySelector(':scope > div:not(.cardtools)'); // the <div> from cardHTML
+  let flags=card.querySelector('.flags');if(flags)flags.remove();
+  const tags=[];
+  if(edited)tags.push({cls:'edit',label:'edited',title:'Undo edits — restore the original wording',act:()=>revertEdit(id)});
+  if(nonEmpty(REVIEW.notes[id]))tags.push({cls:'note',label:'comment',title:'Remove this comment',act:()=>removeNote(id)});
+  if(tags.length){const f=document.createElement('div');f.className='flags';
+    tags.forEach(t=>{const b=document.createElement('button');b.type='button';b.className='flag '+t.cls;b.title=t.title;
+      b.innerHTML=`${t.label} <span class="flag-x">✕</span>`;
+      b.addEventListener('click',ev=>{ev.stopPropagation();t.act();});
+      f.appendChild(b);});
+    body.appendChild(f);}
+}
+function revertEdit(id){delete REVIEW.edits[id];rerenderCard(id);commitReviewChange();}
+function removeNote(id){delete REVIEW.notes[id];rerenderCard(id);commitReviewChange();}
+function attachCardTools(card,it){
+  const t=document.createElement('div');t.className='cardtools';
+  t.innerHTML=`<button data-t="edit">✎ Edit</button><button data-t="comment">💬 Comment</button>`;
+  t.querySelectorAll('button').forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation();const k=b.dataset.t;
+    if(k==='edit')enterEdit(it.id);
+    else if(k==='comment')toggleCardComment(it.id);}));
+  card.appendChild(t);
+}
+function enterEdit(id){
+  const it=IDEAS.find(x=>x.id===id);const card=document.getElementById('c-'+id);
+  // compute effective BEFORE assigning undefined-keyed edit object (Object.assign copies undefineds)
+  const eff=effective(it);
+  // title/detail edits land on the active-language field (title_ro/detail_ro in RO);
+  // quote, category, confidence and topics are language-neutral (quote is always Romanian).
+  const tk=langKey('title'),dk=langKey('detail');
+  const e=REVIEW.edits[id]=Object.assign({[tk]:undefined,[dk]:undefined,quote:undefined,
+    category:undefined,confidence:undefined,topics:undefined},REVIEW.edits[id]||{});
+  // seed from the displayed values (an RO edit falls back to the EN text when no _ro exists yet)
+  if(e[tk]===undefined)e[tk]=disp(eff,'title');
+  if(e[dk]===undefined)e[dk]=disp(eff,'detail');
+  ['quote','category','confidence'].forEach(k=>{if(e[k]===undefined)e[k]=eff[k];});
+  if(e.topics===undefined)e.topics=(eff.topics||[]).slice();
+  card.classList.add('editing');
+  card.innerHTML=cardEditHTML(it,e);
+  // tool cluster shows Done
+  const t=document.createElement('div');t.className='cardtools';
+  t.innerHTML=`<button data-t="revert">↺ Revert</button><button data-t="done" class="on">✓ Done</button>`;
+  t.querySelectorAll('button').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();
+    b.dataset.t==='revert'?revertEdit(id):commitEdit(id);}));
+  card.appendChild(t);
+  wireEdit(card,id);
+}
+function cardEditHTML(it,e){
+  const src=TURNS[it.anchors[0]][1];
+  const tk=langKey('title'),dk=langKey('detail');
+  const catOpts=CATS.map(c=>`<option value="${c}"${c===e.category?' selected':''}>${catLabel(c)}</option>`).join('');
+  const confOpts=CONFS.map(c=>`<option value="${c}"${c===e.confidence?' selected':''}>${confLabel(c)}</option>`).join('');
+  const chips=(e.topics||[]).map((tp,i)=>`<span class="topic echip" data-i="${i}">${tp}<button data-rm="${i}">×</button></span>`).join('');
+  return `<input type="checkbox" class="keep" disabled${kept.has(it.id)?' checked':''} aria-label="keep">
+    <div>
+      <div class="tagrow">
+        <select class="esel" data-f="category">${catOpts}</select>
+        <select class="esel" data-f="confidence">${confOpts}</select>
+        <span class="src">⌖ ${src}</span>
+      </div>
+      <h3 class="efield" contenteditable="true" data-f="${tk}">${e[tk]}</h3>
+      <p class="detail efield" contenteditable="true" data-f="${dk}">${e[dk]}</p>
+      <blockquote class="quote efield" contenteditable="true" data-f="quote">${e.quote}</blockquote>
+      <div class="topics" data-topics-edit>${chips}<input class="topic-add" placeholder="+ topic" /></div>
+    </div>`;
+}
+function wireEdit(card,id){
+  const e=REVIEW.edits[id];
+  card.querySelectorAll('.efield').forEach(el=>{
+    el.addEventListener('click',ev=>ev.stopPropagation());
+    el.addEventListener('input',()=>{e[el.dataset.f]=el.textContent;commitReviewChange();});});
+  card.querySelectorAll('.esel').forEach(sel=>{
+    sel.addEventListener('click',ev=>ev.stopPropagation());
+    sel.addEventListener('change',()=>{e[sel.dataset.f]=sel.value;commitReviewChange();});});
+  const tw=card.querySelector('[data-topics-edit]');
+  tw.addEventListener('click',ev=>{ev.stopPropagation();
+    const rm=ev.target.getAttribute('data-rm');
+    if(rm!==null){e.topics.splice(+rm,1);redrawTopics(card,id);commitReviewChange();}});
+  const add=tw.querySelector('.topic-add');
+  add.addEventListener('keydown',ev=>{ev.stopPropagation();
+    if(ev.key==='Enter'&&nonEmpty(add.value)){e.topics.push(add.value.trim());add.value='';
+      redrawTopics(card,id);commitReviewChange();}});
+}
+function redrawTopics(card,id){
+  const e=REVIEW.edits[id],tw=card.querySelector('[data-topics-edit]');
+  const chips=(e.topics||[]).map((tp,i)=>`<span class="topic echip" data-i="${i}">${tp}<button data-rm="${i}">×</button></span>`).join('');
+  tw.innerHTML=chips+'<input class="topic-add" placeholder="+ topic" />';
+  const add=tw.querySelector('.topic-add');
+  add.addEventListener('keydown',ev=>{ev.stopPropagation();
+    if(ev.key==='Enter'&&nonEmpty(add.value)){e.topics.push(add.value.trim());add.value='';
+      redrawTopics(card,id);commitReviewChange();}});
+}
+function commitEdit(id){
+  // prune unchanged fields so the packet only carries real edits
+  const ch=changedFields(id);
+  if(Object.keys(ch).length===0)delete REVIEW.edits[id];else REVIEW.edits[id]=ch;
+  rerenderCard(id);commitReviewChange();
+}
+function commentField(initial,onChange,placeholder,showRemove){
+  const wrap=document.createElement('div');wrap.className='cmt';
+  const ta=document.createElement('textarea');ta.className='cmt-in';
+  ta.value=initial||'';ta.placeholder=placeholder||'Comment for Claude…';
+  ta.addEventListener('click',e=>e.stopPropagation());
+  ta.addEventListener('input',()=>onChange(ta.value));
+  wrap.appendChild(ta);
+  // showRemove defaults true; card comments pass false since their "comment ✕" chip already removes
+  if(showRemove!==false){
+    const rm=document.createElement('button');rm.type='button';rm.className='cmt-rm';rm.textContent='Remove comment';
+    rm.addEventListener('click',e=>{e.stopPropagation();onChange('');wrap.remove();});
+    wrap.appendChild(rm);
+  }
+  return wrap;
+}
+function toggleCardComment(id){
+  const card=document.getElementById('c-'+id);
+  const host=card.querySelector(':scope > div'); // the card body <div> from cardHTML
+  let box=host.querySelector(':scope > .cmt');
+  if(box){const ta=box.querySelector('.cmt-in');ta.focus();return;}
+  box=commentField(REVIEW.notes[id]||'',v=>{REVIEW.notes[id]=v;applyCardState(card,id);commitReviewChange();},'What should change about this insight? (merge, re-scope, wrong speaker…)',false);
+  host.appendChild(box);box.querySelector('.cmt-in').focus();
+}
+function toggleReportNote(btn){
+  const host=btn.parentElement;let box=host.querySelector('.cmt');
+  if(box){box.querySelector('.cmt-in').focus();return;}
+  box=commentField(REVIEW.reportNote,v=>{REVIEW.reportNote=v;
+    btn.classList.toggle('on',nonEmpty(v));commitReviewChange();},
+    'Overall direction: too many cards, wrong framing, merge these two…');
+  host.appendChild(box);box.querySelector('.cmt-in').focus();
+}
+function repairKey(bucket,orig){return bucket+'\t'+orig;}
+function toggleRepairComment(bucket,orig,row){
+  let box=row.querySelector(':scope > .cmt');
+  if(box){box.querySelector('.cmt-in').focus();return;}
+  const key=repairKey(bucket,orig);const btn=row.querySelector('.rowtool');
+  box=commentField(REVIEW.repairComments[key]||'',v=>{REVIEW.repairComments[key]=v;
+    btn.classList.toggle('on',nonEmpty(v));commitReviewChange();},'Comment on this repair (e.g. leave as-is, wrong fix)…');
+  box.classList.add('inline');row.appendChild(box);box.querySelector('.cmt-in').focus();
+  btn.classList.toggle('on',nonEmpty(REVIEW.repairComments[key]));
+}
+function toggleSectionComment(bucket,sec){
+  let box=sec.querySelector(':scope > .cmt');const btn=sec.querySelector('.sectool');
+  if(box){box.querySelector('.cmt-in').focus();return;}
+  box=commentField(REVIEW.repairSectionNote,v=>{REVIEW.repairSectionNote=v;
+    btn.classList.toggle('on',nonEmpty(v));commitReviewChange();},'Comment on the repair log as a whole…');
+  box.classList.add('inline');sec.appendChild(box);box.querySelector('.cmt-in').focus();
+}
+function toggleTurnComment(i,turn){
+  let box=turn.querySelector(':scope > .cmt');const btn=turn.querySelector('.rowtool');
+  if(box){box.querySelector('.cmt-in').focus();return;}
+  box=commentField(REVIEW.turnComments[i]||'',v=>{REVIEW.turnComments[i]=v;
+    btn.classList.toggle('on',nonEmpty(v));commitReviewChange();},'Comment on this line (e.g. wrong speaker, misattributed)…');
+  box.classList.add('inline');turn.appendChild(box);box.querySelector('.cmt-in').focus();
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1400);}
+setLang(lang); // apply the persisted language (no-op for EN; switches everything to RO if saved)
+</script>
+</body>
+</html>
