@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Process Side Panel — Behavior Spec</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #0f1114;
+    --ink-soft: #55606e;
+    --line: #e7eaee;
+    --accent: #2563eb;
+    --accent-soft: #eaf1ff;
+    --green: #16a34a;
+    --green-soft: #eafaf0;
+    --code-bg: #f0f2f5;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+  header.page {
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-size: 34px;
+    line-height: 1.15;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+  .meta {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .lede {
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin: 18px 0 0;
+    max-width: 62ch;
+  }
+  .toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 28px 0 8px;
+  }
+  .toc a {
+    font-size: 13px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    background: var(--card);
+    border: 1px solid var(--line);
+    padding: 6px 12px;
+    border-radius: 999px;
+    transition: all .15s ease;
+  }
+  .toc a:hover { color: var(--accent); border-color: var(--accent); }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 26px 28px;
+    margin: 18px 0;
+  }
+  section h2 {
+    font-size: 19px;
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    user-select: none;
+  }
+  section h2 .num {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 7px;
+    padding: 2px 9px;
+    flex-shrink: 0;
+  }
+  /* expand / collapse */
+  section h2 .caret {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--ink-soft);
+    font-size: 14px;
+    transition: transform .18s ease;
+  }
+  section.collapsed h2 {
+    margin-bottom: 0;
+  }
+  section.collapsed h2 .caret {
+    transform: rotate(-90deg);
+  }
+  section.collapsed > :not(h2) {
+    display: none;
+  }
+  section h2:hover .caret { color: var(--accent); }
+  ul { margin: 0; padding-left: 20px; }
+  li { margin: 8px 0; }
+  li strong { font-weight: 600; }
+  p { margin: 0 0 12px; }
+  p:last-child { margin-bottom: 0; }
+  .rationale {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    background: var(--bg);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0 0;
+  }
+  .rationale b { color: var(--ink); font-weight: 600; }
+  .open-q {
+    font-size: 13.5px;
+    background: #fff8ec;
+    border-left: 3px solid #e9a23b;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0 0;
+  }
+  .open-q b { color: var(--ink); font-weight: 600; }
+  /* Collapsible rationale — same skin as .rationale, but folded away by default. */
+  details.why {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    background: var(--bg);
+    border-left: 3px solid var(--accent);
+    padding: 11px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0 0;
+  }
+  details.why > summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--ink);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+  }
+  details.why > summary::-webkit-details-marker { display: none; }
+  details.why > summary::after {
+    content: '⌄';
+    margin-left: auto;
+    color: var(--ink-soft);
+    transition: transform .18s ease;
+  }
+  details.why[open] > summary::after { transform: rotate(180deg); }
+  details.why > p { margin: 10px 0 0; }
+  details.why b { color: var(--ink); font-weight: 600; }
+
+  /* ---- Spacing section: tables left, Figma-style redlines right ---- */
+  .spec-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 348px;
+    gap: 26px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .spec-split { grid-template-columns: 1fr; } }
+  .vz-cap {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+
+  /* --- redline primitives: blue = size / padding, orange = gap ---
+     DS tokens: blue-500 #006bd8 (colors.json), orange-500 #fd6b1c (colors.json),
+     monospace face JetBrains Mono (typography.json) --- */
+  .rl { width: 300px; margin: 0 0 30px; }
+  .rl:last-of-type { margin-bottom: 0; }
+  .rl-stage { position: relative; }
+  .rl-t {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8390a2;
+    margin: 0 0 10px;
+  }
+  .rl-chip {
+    position: absolute;
+    z-index: 4;
+    background: #006bd8;
+    color: #fff;
+    font: 700 10px/1 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 3px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+  }
+  .rl-chip.o { background: #fd6b1c; }
+  .rl-v, .rl-h { position: absolute; z-index: 2; background: #006bd8; opacity: .5; }
+  .rl-v { width: 1px; }
+  .rl-h { height: 1px; }
+  .rl-v.o, .rl-h.o { background: #fd6b1c; opacity: .9; }
+
+  /* --- the UI being measured — real FlowX DS foundation tokens, not approximations ---
+     surfaces: white / neutrals-50 #f7f8f9 · borders: neutrals-100 #e3e8ed · muted icons: neutrals-400 #8390a2
+     primary text: neutrals-900 #1d232c · secondary text: neutrals-500 #64748b · selected: blue-500 #006bd8 / blue-50 #e6f0fb
+     type: Open Sans, Caption preset 12px/18px (see §9 Type & color) */
+  .rl-ui {
+    position: relative;
+    z-index: 1;
+    background: #fff;
+    border: 1px solid #e3e8ed;
+    border-radius: 8px;
+    font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .rl-ui.flat { border-radius: 0; border-left: none; border-right: none; }
+  .u-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-bottom: 1px solid #e3e8ed;
+  }
+  .u-t { font-size: 12px; line-height: 20px; font-weight: 600; color: #1d232c; }
+  .u-dots { display: flex; flex-direction: column; gap: 2px; margin-left: auto; }
+  .u-dots i { width: 2px; height: 2px; border-radius: 50%; background: #8390a2; display: block; }
+  .u-x { color: #8390a2; font-size: 11px; }
+  .u-body { padding: 0 12px; }
+  .u-cat {
+    height: 42px; display: flex; align-items: center;
+    font-size: 12px; line-height: 18px; font-weight: 600; color: #1d232c;
+    border-top: 1px solid #e3e8ed;
+  }
+  .u-cat:first-child { border-top: none; }
+  .u-ctl { width: 16px; text-align: center; color: #8390a2; font-size: 12px; flex-shrink: 0; }
+  .u-gap { width: 8px; align-self: stretch; background: rgba(253,107,28,.22); flex-shrink: 0; }
+  .u-vgap { height: 8px; background: rgba(253,107,28,.22); }
+  .u-pad { width: 8px; align-self: stretch; background: rgba(0,107,216,.14); flex-shrink: 0; }
+  .u-card {
+    min-height: 34px; display: flex; align-items: center;
+    border: 1px solid #e3e8ed; border-radius: 8px; background: #ffffff;
+    font-size: 12px; line-height: 18px; color: #1d232c;
+  }
+  .u-card.sel { background: #e6f0fb; border-color: #006bd8; color: #006bd8; }
+  .u-card > span { padding-left: 8px; }
+  .u-card > .u-pad, .u-card > .u-gap, .u-card > .u-ic { padding-left: 0; }
+  .u-card > .u-pad + span, .u-card > .u-gap + span { padding-left: 0; }
+  .u-card.s { min-height: 50px; }
+  .u-col { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-left: 0 !important; }
+  .u-col b { font-weight: 600; }
+  .u-col em { font-style: normal; color: #64748b; font-size: 11px; }
+  .u-ic {
+    width: 16px; text-align: center; color: #8390a2; font-size: 12px;
+    flex-shrink: 0; display: grid; place-items: center;
+  }
+  .u-sq { width: 11px; height: 11px; border: 1px solid #8390a2; border-radius: 2px; display: block; }
+  .u-grip { display: grid; grid-template-columns: 2px 2px; gap: 2px; }
+  .u-grip i { width: 2px; height: 2px; border-radius: 50%; background: #8390a2; display: block; }
+  .u-trash {
+    width: 10px; height: 11px; margin-top: 3px; position: relative;
+    border: 1px solid #8390a2; border-top: none; border-radius: 0 0 2px 2px;
+  }
+  .u-trash::before {
+    content: ''; position: absolute; left: -2px; width: 14px; top: -3px;
+    height: 1px; background: #8390a2;
+  }
+  .u-btn { width: 24px; height: 24px; display: grid; place-items: center; flex-shrink: 0; border-radius: 8px; }
+  .u-btn .u-dots { margin-left: 0; }
+  .rl-tgt {
+    position: absolute; width: 24px; height: 24px;
+    border: 1px dashed #006bd8; border-radius: 5px; z-index: 3; opacity: .85;
+  }
+  .u-field {
+    height: 46px; display: flex; align-items: center; padding: 0 12px;
+    border: 1px solid #e3e8ed; border-radius: 8px; color: #64748b; font-size: 12px;
+  }
+  .u-group { padding: 4px 0 8px; }
+  /* Grouping sub-label — Footer/Semi Bold 10px/16px (see §9 Type & color), quieter than a category name */
+  .u-glabel { font-size: 10px; line-height: 16px; font-weight: 600; color: #64748b; padding: 0 0 4px; }
+  /* Empty-category state — DS empty-state pattern (medium): dashed-circle icon,
+     bold title, caption, optional secondary CTA — centered in a bordered box.
+     https://flowx-ai.github.io/FlowX-Design-System/patterns/empty-states */
+  .u-empty {
+    border: 1px solid #e3e8ed; border-radius: 8px; background: #fff;
+    padding: 24px 16px; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .u-empty-ic {
+    width: 24px; height: 24px; border: 1.5px dashed #8390a2; border-radius: 50%;
+  }
+  .u-empty-title { margin-top: 8px; font-size: 14px; line-height: 24px; font-weight: 700; color: #1d232c; }
+  .u-empty-caption { margin-top: 4px; font-size: 12px; line-height: 16px; color: #64748b; }
+  .u-empty .u-btn-sec { margin-top: 16px; }
+  /* Action overlay — floating card beside the panel (§7), radius 16 / Shadow M per §9 */
+  .u-overlay {
+    position: relative;
+    width: 300px; background: #fff; border-radius: 16px;
+    box-shadow: 2px 2px 24px rgba(29,35,44,.16);
+    font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .u-ov-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid #e3e8ed;
+    font-size: 12px; font-weight: 600; color: #1d232c;
+  }
+  .u-ov-body { padding: 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .u-ov-bar {
+    padding: 10px 12px; border-top: 1px solid #e3e8ed;
+    display: flex; align-items: center; gap: 8px;
+  }
+  /* Redline "band" — a translucent wash laid directly over the exact region being measured,
+     so a padding/gap chip always sits on top of something visible (see Card XS — sizing). */
+  .rl-band { position: absolute; z-index: 2; pointer-events: none; background: rgba(0,107,216,.14); }
+  .rl-band.o { background: rgba(253,107,28,.22); }
+  .u-ov-warn { font-size: 10.5px; line-height: 14px; color: #e62200; }
+  .u-ov-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
+  .u-btn-sec, .u-btn-pri {
+    font-size: 11px; font-weight: 600; line-height: 16px;
+    padding: 5px 10px; border-radius: 8px;
+  }
+  .u-btn-sec { background: #fff; border: 1px solid #e3e8ed; color: #006bd8; }
+  .u-btn-pri { background: #006bd8; color: #fff; }
+  @keyframes rlJiggle {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
+  }
+  .u-ov-bar.jiggle { animation: rlJiggle .6s ease; }
+  /* Overlay opening position — wireframe of the page, with the panel on the right
+     and the overlay opening to its left but still inside the page bounds */
+  .u-wire-page {
+    position: relative;
+    width: 100%; height: 240px;
+    background: #eef1f4; border: 1px solid #e3e8ed; border-radius: 8px;
+    overflow: hidden;
+  }
+  .u-wire-label {
+    position: absolute; top: 8px; left: 10px; z-index: 1;
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: #a6b0be;
+  }
+  .u-wire-panel {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 130px;
+    background: #fff; border-left: 1px solid #e3e8ed;
+    padding: 10px 8px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .u-mini-card {
+    height: 22px; border: 1px solid #e3e8ed; border-radius: 6px; background: #fff;
+    font-size: 9px; color: #64748b;
+    display: flex; align-items: center; padding: 0 6px;
+  }
+  .u-mini-card.trigger { border-color: #006bd8; background: #e6f0fb; color: #006bd8; font-weight: 600; }
+  .u-ov-body.scroll { position: relative; max-height: 74px; overflow: hidden; }
+  .u-ov-body.scroll::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
+  }
+  .u-scroll-chip {
+    position: absolute; top: 8px; right: 8px; z-index: 1;
+    font-size: 9px; font-weight: 600; color: #64748b;
+    background: #f7f8f9; border: 1px solid #e3e8ed; border-radius: 999px;
+    padding: 2px 6px;
+  }
+  /* No-tabs case: content drops straight into a plain section heading under the header. */
+  .u-heading {
+    display: flex; align-items: center;
+    padding: 12px 12px 8px;
+    font-size: 14px; line-height: 24px; font-weight: 700; color: #1d232c;
+  }
+  /* Tabs case — FlowX DS Tabs component, size "small" (tabs.json)
+     tabCell padding 8/12, gap 6 · active: text+bottom-stroke #006bd8, weight 600 · inactive: text #64748b, weight 400
+     container divider neutrals-100 #e3e8ed */
+  .u-tabs { display: flex; padding: 0 12px; border-bottom: 1px solid #e3e8ed; }
+  .u-tab {
+    position: relative;
+    padding: 8px 12px; margin-right: 6px;
+    font-size: 12px; line-height: 16px; font-weight: 400; color: #64748b;
+  }
+  .u-tab.active { color: #006bd8; font-weight: 600; }
+  .u-tab.active::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+    height: 2px; background: #006bd8;
+  }
+  /* redlines off: keep the mockup's real spacing, drop the annotation tint */
+  .rl-group.redlines-off .u-pad,
+  .rl-group.redlines-off .u-gap,
+  .rl-group.redlines-off .u-vgap {
+    background: transparent;
+  }
+  .rl-key {
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    margin: 18px 0 0; padding: 0; list-style: none;
+    font-size: 11.5px; color: var(--ink-soft); width: 300px;
+  }
+  .rl-key li { display: flex; align-items: center; gap: 6px; margin: 0; }
+  .rl-key i {
+    width: 10px; height: 10px; border-radius: 3px; display: block; flex-shrink: 0;
+  }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-top: 8px;
+  }
+  @media (max-width: 680px) { .two-col { grid-template-columns: 1fr; } }
+  .two-col h3 {
+    font-size: 17px;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+  }
+  .two-col .tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: 1px 7px;
+    margin-left: 8px;
+  }
+  .two-col .sub {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    font-weight: 700;
+    margin: 16px 0 6px;
+  }
+  .two-col ul { padding-left: 18px; margin: 0; }
+  .two-col li { margin: 6px 0; font-size: 14px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0 4px;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    background: var(--bg);
+  }
+  tr:last-child td { border-bottom: none; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pill.idle  { background: var(--code-bg); color: var(--ink-soft); }
+  .pill.saving{ background: var(--code-bg); color: #5b6472; }
+  .pill.saved { background: var(--green-soft); color: var(--green); }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block;
+  }
+  footer.page {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 12px;
+    color: #9aa4b0;
+  }
+
+  /* ---- Redlines & specs toggle — FlowX DS Switch component, size "small" ----
+     Source: flowx-design-system / references/components/switch.json
+     track 28x16 r20 · knobOff 10x10 · knobOn 12x12 · label Open Sans 12/16
+     colors — on: fill #006bd8 (blue-500), knob #fff · off: fill #fff, stroke 1.5 #cbd1db (neutrals-200), knob #64748b (neutrals-500) */
+  .rl-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed #cbd1db;
+  }
+  .rl-switch { position: relative; display: inline-block; width: 28px; height: 16px; flex-shrink: 0; }
+  .rl-switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .rl-switch-track {
+    position: absolute; inset: 0;
+    background: #ffffff;
+    border: 1.5px solid #cbd1db;
+    border-radius: 20px;
+    box-sizing: border-box;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .rl-switch-thumb {
+    position: absolute; top: 3px; left: 2px;
+    width: 10px; height: 10px;
+    background: #64748b;
+    border-radius: 50%;
+    transition: left .15s ease, top .15s ease, width .15s ease, height .15s ease, background .15s ease;
+  }
+  .rl-switch input:checked ~ .rl-switch-track {
+    background: #006bd8;
+    border-color: #006bd8;
+  }
+  .rl-switch input:checked ~ .rl-switch-track .rl-switch-thumb {
+    left: 14px; top: 2px;
+    width: 12px; height: 12px;
+    background: #ffffff;
+  }
+  .rl-toggle-label {
+    font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+    color: #0f1114;
+    white-space: nowrap;
+  }
+
+  /* When off: hide that area's redline overlays/chips/legend, keep the titles and the underlying UI mockup */
+  .rl-group.redlines-off .rl-chip,
+  .rl-group.redlines-off .rl-v,
+  .rl-group.redlines-off .rl-h,
+  .rl-group.redlines-off .rl-tgt,
+  .rl-group.redlines-off .rl-band,
+  .rl-group.redlines-off .rl-key {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="eyebrow">Product &amp; design spec</p>
+    <h1>Process Side Panel</h1>
+    <p class="meta">Node settings in the process editor · prototype behavior</p>
+    <p class="lede">
+      A right-hand panel for editing a node's settings without leaving the canvas.
+      It stays out of the way, keeps the diagram in view, and saves as you go — so
+      configuring a step feels like a quick edit, not a context switch.
+    </p>
+    <nav class="toc">
+      <a href="#behavior">1 · Panel behavior</a>
+      <a href="#header">2 · Header</a>
+      <a href="#autosave">3 · Saving</a>
+      <a href="#categories">4 · Panel Categories</a>
+      <a href="#cards">5 · Config cards</a>
+      <a href="#adding">6 · Adding a new item</a>
+      <a href="#overlay">7 · Action overlay</a>
+      <a href="#spacing">8 · Spacing &amp; sizing</a>
+      <a href="#tokens">9 · Type &amp; color</a>
+    </nav>
+  </header>
+
+  <section id="behavior">
+    <h2><span class="num">1</span> Panel behavior</h2>
+
+    <p><strong>Opening</strong></p>
+    <ul>
+      <li>The panel opens when you select a node on the canvas to edit it.</li>
+      <li>If someone else is already editing that node, we confirm before opening — so two people don't unknowingly work on the same step.</li>
+      <li>The open panel is part of the page's address, so a shared or refreshed link reopens the same node with its panel already showing.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>Switching between nodes</strong></p>
+    <ul>
+      <li>While the panel is open, clicking a different node <strong>swaps its contents in place</strong> — the panel doesn't flash closed and reopen.</li>
+      <li>The header and settings update instantly to match the newly selected node.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>Closing</strong></p>
+    <p>The panel closes when you:</p>
+    <ul>
+      <li>Click the <strong>✕</strong> in the header, or</li>
+      <li>Click an empty part of the canvas (deselecting the node).</li>
+    </ul>
+    <p>Closing also clears the node selection, so the canvas returns to a clean, nothing-selected state.</p>
+  </section>
+
+  <section id="header">
+    <h2><span class="num">2</span> Header</h2>
+    <div class="spec-split">
+    <div>
+
+    <p>The header is the same in every settings panel — the process side panel, the data model's attribute panel, the UI designer, and any panel added later. Only its icon and title change.</p>
+
+    <p style="margin-top:16px"><strong>On the left</strong></p>
+    <ul>
+      <li>An icon that reflects <strong>what you're editing</strong> — the node type (task, event, gateway…) in the process editor, an attribute in the data model, a UI element in the UI designer — so you always know what you're configuring at a glance.</li>
+      <li>A <strong>title naming the thing being configured.</strong> In the data model and UI‑designer panels this still reads <em>&lt;what it is&gt; Settings</em> — “Attribute Settings”, “Data Type Settings”. The <strong>process side panel titles by the exact node type instead</strong> — “User Task”, “Start Timer Event”, “Exclusive Gateway”, “Timer (interrupting)” — with no “Settings” suffix.</li>
+      <li>Long titles <strong>truncate</strong> rather than wrap or push the buttons out of reach — the header stays a single line.</li>
+    </ul>
+
+    <div class="open-q">
+      <b>Open topic — should this generalize?</b> Right now the process panel is the odd one out: it names the exact node type, the other two panels still say “&lt;thing&gt; Settings”. Worth deciding whether “Settings” should come off everywhere for consistency, or whether the process panel is the exception because a node's type is more informative than “Node”.
+    </div>
+
+    <p style="margin-top:16px"><strong>On the right</strong></p>
+    <ul>
+      <li>A <strong>“More” button</strong> — three dots stacked vertically — holding the actions that belong to the whole thing you're editing — rather than to one field inside it. Clicking it drops a small menu open beneath it.</li>
+      <li>A <strong>close (✕)</strong> button, always last so it sits in the same corner everywhere.</li>
+      <li>Both are <strong>24px</strong> targets with a light grey hover, spaced 8px apart.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>What goes in the More menu</strong></p>
+    <ul>
+      <li>Whole-item actions only — in the data model's attribute panel that's <strong>View references</strong> and <strong>Delete</strong>; an entity gets its own longer set.</li>
+      <li><strong>Destructive items sit last and read as destructive</strong> (Delete is styled in red).</li>
+      <li>Items the user has no rights for are <strong>left out entirely</strong>; items blocked by a read-only state are <strong>shown but disabled</strong>, so the menu still tells you what the panel can do.</li>
+      <li>A surface with nothing to put in the menu simply <strong>doesn't render the button at all</strong> — no empty menu.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>Below the header — tabs or straight to content</strong></p>
+    <ul>
+      <li><strong>No tabs:</strong> when a node's settings are a single group, the panel skips tabs entirely and drops straight into that group's heading right under the header — e.g. an Embedded Subprocess goes straight to <strong>General Config</strong>.</li>
+      <li><strong>Tabs:</strong> when a node has more than one top-level grouping, a tab strip sits directly under the header, above any content — e.g. a User Task shows <strong>Actions</strong> and <strong>Node Config</strong> as tabs.</li>
+      <li>The active tab is <strong>blue with a blue underline</strong>; inactive tabs are plain grey text — no icons, no counters.</li>
+      <li>Whether a node type has tabs — and which ones — is fixed by <strong>what that node type needs</strong>, not a per-instance choice: two nodes of the same type always show the same tab set (or the same no-tabs layout).</li>
+    </ul>
+
+    </div><!-- /left: prose -->
+
+    <aside class="spec-visual rl-group" id="rlg-header">
+      <p class="vz-cap">Visual example</p>
+
+      <figure class="rl">
+        <p class="rl-t">Header — padding, gaps &amp; targets</p>
+        <div class="rl-stage" style="padding:26px 0 34px">
+          <div class="rl-v" style="left:0;top:20px;bottom:34px"></div>
+          <div class="rl-v" style="left:299px;top:20px;bottom:34px"></div>
+          <div class="rl-v" style="left:16px;top:20px;bottom:34px"></div>
+          <div class="rl-v" style="left:283px;top:20px;bottom:34px"></div>
+          <div class="rl-chip" style="left:16px;top:26px">16</div>
+          <div class="rl-chip" style="left:283px;top:26px">16</div>
+
+          <div class="rl-v o" style="left:252px;top:12px;bottom:34px"></div>
+          <div class="rl-v o" style="left:260px;top:12px;bottom:34px"></div>
+          <div class="rl-chip o" style="left:256px;top:8px">8</div>
+
+          <div class="rl-h" style="left:300px;width:42px;top:26px"></div>
+          <div class="rl-h" style="left:300px;width:42px;top:32px"></div>
+          <div class="rl-h" style="left:300px;width:42px;top:56px"></div>
+          <div class="rl-h" style="left:300px;width:42px;top:62px"></div>
+          <div class="rl-chip" style="left:330px;top:29px">6</div>
+          <div class="rl-chip" style="left:330px;top:59px">6</div>
+
+          <div class="rl-tgt" style="left:260px;top:32px"></div>
+          <div class="rl-v" style="left:272px;top:56px;height:12px"></div>
+          <div class="rl-chip" style="left:272px;top:74px">24</div>
+
+          <div class="rl-ui">
+            <div class="u-head">
+              <span class="u-ic"><span class="u-sq"></span></span>
+              <span class="u-t">Attribute Settings</span>
+              <span class="u-btn" style="margin-left:auto"><span class="u-dots"><i></i><i></i><i></i></span></span>
+              <span class="u-btn"><span class="u-x">✕</span></span>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- FIGURE — no tabs vs. tabs -->
+      <figure class="rl" style="margin-top:20px">
+        <p class="rl-t">No tabs — straight to content</p>
+        <div class="rl-ui">
+          <div class="u-head">
+            <span class="u-ic"><span class="u-sq" style="display:flex;align-items:center;justify-content:center;font-size:8px;color:#8390a2">+</span></span>
+            <span class="u-t">Embedded Subprocess</span>
+            <span class="u-btn" style="margin-left:auto"><span class="u-x">✕</span></span>
+          </div>
+          <div class="u-heading">General Config</div>
+          <div style="margin:0 12px 12px">
+            <div class="u-field" style="height:40px;color:#a6b0be">Node name</div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="rl" style="margin-top:20px">
+        <p class="rl-t">Tabs — more than one grouping</p>
+        <div class="rl-ui">
+          <div class="u-head">
+            <span class="u-ic"><span class="u-sq"></span></span>
+            <span class="u-t">User Task</span>
+            <span class="u-btn" style="margin-left:auto"><span class="u-x">✕</span></span>
+          </div>
+          <div class="u-tabs">
+            <span class="u-tab active">Actions</span>
+            <span class="u-tab">Node Config</span>
+          </div>
+          <div class="u-heading" style="padding-bottom:4px"><span>Actions</span><span class="u-ctl" style="margin-left:auto">+</span></div>
+          <div style="margin:0 12px 12px">
+            <div class="u-card"><span class="u-pad"></span><span class="u-ic"><span class="u-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span></span><span class="u-gap"></span><span>NewActionRename</span></div>
+          </div>
+        </div>
+      </figure>
+
+      <ul class="rl-key">
+        <li><i style="background:#006bd8"></i> size &amp; padding</li>
+        <li><i style="background:#fd6b1c"></i> gap between items</li>
+      </ul>
+
+      <div class="rl-toggle">
+        <label class="rl-switch">
+          <input type="checkbox" class="rl-toggle-input" data-key="header" checked>
+          <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+        </label>
+        <span class="rl-toggle-label">Redlines &amp; specs</span>
+      </div>
+    </aside>
+
+    </div><!-- /spec-split -->
+
+    <div class="open-q">
+      <b>Open topic — edit the name from the title:</b> clicking the header title could let you rename the component inline, right there in the header, instead of hunting for a name field further down. Worth deciding on the interaction (click-to-edit vs a small edit affordance) and how it saves.
+    </div>
+  </section>
+
+  <section id="autosave">
+    <h2><span class="num">3</span> Saving — automatic, no Save button</h2>
+    <p>There's no Save button. Changes persist as you make them, and <strong>one small circle in the editor's top toolbar</strong> — sitting with the undo/redo, language and theme controls, just left of <em>Start Process</em> — is the single place that tells you where things stand.</p>
+    <p>It is deliberately <strong>not</strong> inside the panel header: one circle covers the whole editor, so it stays put while you open, switch and close panels, it's always visible, and it can never be covered by the full-width Warnings bar along the bottom.</p>
+
+    <p style="margin-top:16px"><strong>The three states</strong></p>
+    <table>
+      <thead>
+        <tr><th>State</th><th>What the circle shows</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill idle">resting</span></td>
+          <td><strong>Dashed circle</strong> while something is still unsaved; a <strong>green check</strong> once everything is in</td>
+        </tr>
+        <tr>
+          <td><span class="pill saving">saving</span></td>
+          <td><strong>Spinner</strong>, turning continuously</td>
+        </tr>
+        <tr>
+          <td><span class="pill saved"><span class="dot" style="background:var(--green)"></span>saved</span></td>
+          <td><strong>Green check</strong> that <strong>pops</strong> as it lands</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:18px"><strong>Save status animation</strong></p>
+    <ul>
+      <li>When a save lands, the check <strong>springs in</strong>: it starts small and faint, overshoots slightly past full size, then settles.</li>
+      <li><strong>0.6s, easing out</strong> — scale 0.7 → 1.25 → 1, fading up from 40% to full opacity.</li>
+    </ul>
+
+    <p style="margin-top:18px"><strong>Timing</strong></p>
+    <table>
+      <thead><tr><th>Rule</th><th>Spec</th></tr></thead>
+      <tbody>
+        <tr><td>Minimum time “Saving…” is shown</td><td>500ms — even when the save returns instantly</td></tr>
+        <tr><td>How long “Saved” lingers</td><td>2s, then back to resting</td></tr>
+        <tr><td>Pop duration</td><td>0.6s, ease-out</td></tr>
+      </tbody>
+    </table>
+    <ul style="margin-top:10px">
+      <li>A new edit mid-cycle <strong>restarts the sequence</strong> rather than queuing up a backlog of cues.</li>
+      <li>While the circle is doing its job we <strong>don't also fire success toasts</strong> — one clear signal, not two.</li>
+    </ul>
+
+    <details class="why">
+      <summary>Why save automatically?</summary>
+      <p>Node config is a lot of small, frequent edits. A save-as-you-go model with a calm status cue removes the “did that stick?” doubt without making people hunt for a button.</p>
+    </details>
+  </section>
+
+
+  <section id="categories">
+    <h2><span class="num">4</span> Panel Categories</h2>
+    <div class="spec-split">
+    <div>
+
+    <p>Settings are organized into <strong>categories</strong> — for example Properties, Event Handlers, Datasource, Validators, Conditions, Permissions. Each category is a small self-contained block:</p>
+    <ul>
+      <li>A <strong>header row</strong> (42px tall when collapsed, with 12px of padding above and below the label so it sits centered in the row) with the category name on the left and its controls on the right.</li>
+      <li>Its <strong>items</strong> below, each as a card, stacked with even spacing.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>Header states</strong></p>
+    <p>Every category header comes in a small, fixed set of states, so they all behave identically:</p>
+    <table>
+      <thead><tr><th>State</th><th>Right-side control</th></tr></thead>
+      <tbody>
+        <tr><td>Collapsed</td><td>Caret pointing down — click the row to expand</td></tr>
+        <tr><td>Expanded</td><td>Caret pointing up — click to collapse</td></tr>
+        <tr><td>Collapsed / Expanded <em>+ add</em></td><td>A <strong>“+”</strong> sits to the left of the caret, for categories you can add items to</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:16px"><strong>Grouping sub-labels</strong></p>
+    <ul>
+      <li>Inside a category, related items can sit under a quiet <strong>grouping label</strong> (e.g. “Grouping”, “Static Sources”, “Hide Rules”).</li>
+      <li>It's deliberately smaller and lighter than a category name — a whisper, not a heading — so it organizes without competing.</li>
+    </ul>
+
+    </div><!-- /left: prose -->
+
+    <aside class="spec-visual rl-group" id="rlg-categories">
+      <p class="vz-cap">Visual example</p>
+
+      <!-- FIGURE — collapsed category row, shown in context among its siblings -->
+      <figure class="rl">
+        <p class="rl-t">Category, collapsed — in context</p>
+        <div class="rl-stage" style="padding:24px 0">
+        <div class="rl-v" style="left:0;top:56px;bottom:56px"></div>
+        <div class="rl-v" style="left:299px;top:56px;bottom:56px"></div>
+        <div class="rl-v" style="left:12px;top:56px;bottom:56px"></div>
+        <div class="rl-v" style="left:287px;top:56px;bottom:56px"></div>
+        <div class="rl-chip" style="left:12px;top:70px">12</div>
+        <div class="rl-chip" style="left:287px;top:70px">12</div>
+
+        <div class="rl-v o" style="left:256px;top:78px;bottom:72px"></div>
+        <div class="rl-v o" style="left:264px;top:78px;bottom:72px"></div>
+        <div class="rl-chip o" style="left:260px;top:74px">8</div>
+
+        <div class="rl-v" style="left:322px;top:66px;height:12px"></div>
+        <div class="rl-chip" style="left:322px;top:72px">12</div>
+        <div class="rl-v" style="left:322px;top:96px;height:12px"></div>
+        <div class="rl-chip" style="left:322px;top:102px">12</div>
+
+        <div class="rl-v" style="left:346px;top:66px;bottom:66px"></div>
+        <div class="rl-chip" style="left:346px;top:50%">42</div>
+
+        <div class="rl-ui flat" style="margin:0 12px;border-radius:0">
+          <div class="u-cat" style="border-top:none;padding:0 8px">Properties<span style="margin-left:auto" class="u-ctl">⌄</span></div>
+          <div class="u-cat" style="padding:0 8px">
+            Event Handlers
+            <span style="margin-left:auto" class="u-ctl">+</span>
+            <span class="u-gap"></span>
+            <span class="u-ctl">⌄</span>
+          </div>
+          <div class="u-cat" style="padding:0 8px">Datasource<span style="margin-left:auto" class="u-ctl">⌄</span></div>
+        </div>
+        </div>
+      </figure>
+
+      <!-- FIGURE — expanded category, revealing its items among collapsed siblings -->
+      <figure class="rl" style="margin-top:20px">
+        <p class="rl-t">Category, expanded — in context</p>
+        <div class="rl-stage" style="padding:24px 0 4px">
+        <div class="rl-v" style="left:346px;top:66px;height:42px"></div>
+        <div class="rl-chip" style="left:346px;top:87px">42</div>
+
+        <div class="rl-v" style="left:322px;top:108px;height:4px"></div>
+        <div class="rl-chip" style="left:322px;top:110px">4</div>
+        <div class="rl-v o" style="left:322px;top:146px;height:8px"></div>
+        <div class="rl-chip o" style="left:322px;top:150px">8</div>
+
+        <div class="rl-ui flat" style="margin:0 12px;border-radius:0">
+          <div class="u-cat" style="border-top:none;padding:0 8px">Properties<span style="margin-left:auto" class="u-ctl">⌄</span></div>
+          <div class="u-cat" style="padding:0 8px">
+            Event Handlers
+            <span style="margin-left:auto" class="u-ctl">+</span>
+            <span class="u-gap"></span>
+            <span class="u-ctl">⌃</span>
+          </div>
+          <div class="u-group" style="display:flex;flex-direction:column;gap:8px">
+            <div class="u-card"><span>action001</span></div>
+            <div class="u-card sel"><span>Run Local Script</span></div>
+          </div>
+          <div class="u-cat" style="padding:0 8px">Datasource<span style="margin-left:auto" class="u-ctl">⌄</span></div>
+        </div>
+        </div>
+      </figure>
+
+      <!-- FIGURE — grouping sub-label -->
+      <figure class="rl" style="margin-top:20px">
+        <p class="rl-t">Grouping sub-label</p>
+        <div class="rl-stage" style="padding:24px 0 4px">
+        <div class="rl-v" style="left:322px;top:74px;height:10px"></div>
+        <div class="rl-chip" style="left:322px;top:79px">10</div>
+
+        <div class="rl-ui flat" style="margin:0 12px;border-radius:0">
+          <div class="u-cat" style="border-top:none;padding:0 8px">Datasource<span style="margin-left:auto" class="u-ctl">⌃</span></div>
+          <div class="u-group" style="display:flex;flex-direction:column;gap:8px">
+            <div class="u-glabel" style="padding-left:8px">Static Sources</div>
+            <div class="u-card"><span>Countries</span></div>
+            <div class="u-card"><span>Currencies</span></div>
+          </div>
+        </div>
+        </div>
+      </figure>
+
+      <ul class="rl-key">
+        <li><i style="background:#006bd8"></i> size &amp; padding</li>
+        <li><i style="background:#fd6b1c"></i> gap between items</li>
+      </ul>
+
+      <div class="rl-toggle">
+        <label class="rl-switch">
+          <input type="checkbox" class="rl-toggle-input" data-key="categories" checked>
+          <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+        </label>
+        <span class="rl-toggle-label">Redlines &amp; specs</span>
+      </div>
+    </aside>
+
+    </div><!-- /spec-split -->
+
+    <div class="rationale">
+      <b>Why a fixed kit:</b> a category is always “a header + its cards.” Reusing the same header states, grouping labels, and two card sizes everywhere means every list in the panel reads the same, whatever it holds.
+    </div>
+  </section>
+
+  <section id="cards">
+    <h2><span class="num">5</span> Config cards</h2>
+    <p>The config card is the repeating building block of every panel — actions, rules, streams, validators, permissions, expressions all render as one. It comes in two sizes, <strong>Card XS</strong> and <strong>Card S</strong>, which serve different content densities and interaction models and should <strong>not</strong> be used interchangeably.</p>
+
+    <div class="rl-group" id="rlg-cards">
+    <div class="two-col">
+      <div>
+        <h3>Card XS <span class="tag">34px</span></h3>
+
+        <figure class="rl" style="margin-top:16px">
+          <p class="rl-t">Card XS — sizing</p>
+          <div class="rl-stage" style="padding:26px 0 4px">
+            <div class="rl-v" style="left:12px;top:16px;bottom:0"></div>
+            <div class="rl-v" style="left:287px;top:16px;bottom:0"></div>
+            <div class="rl-v" style="left:20px;top:16px;height:44px"></div>
+            <div class="rl-chip" style="left:16px;top:12px">8</div>
+            <div class="rl-v o" style="left:36px;top:16px;bottom:0"></div>
+            <div class="rl-v o" style="left:44px;top:16px;bottom:0"></div>
+            <div class="rl-chip o" style="left:40px;top:12px">8</div>
+            <div class="rl-v" style="left:318px;top:26px;height:34px"></div>
+            <div class="rl-chip" style="left:318px;top:43px">34</div>
+
+            <div style="margin:0 12px">
+              <div class="u-card">
+                <span class="u-pad"></span>
+                <span class="u-ic"><span class="u-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+                <span class="u-gap"></span>
+                <span>Run Local Script</span>
+                <span class="u-ic" style="margin-left:auto"><span class="u-trash"></span></span>
+                <span class="u-pad"></span>
+              </div>
+            </div>
+          </div>
+        </figure>
+      </div>
+
+      <div>
+        <h3>Card S <span class="tag">50px</span></h3>
+
+        <figure class="rl" style="margin-top:16px">
+          <p class="rl-t">Card S — sizing</p>
+          <div class="rl-stage" style="padding:26px 0 4px">
+            <div class="rl-v" style="left:12px;top:16px;bottom:0"></div>
+            <div class="rl-v" style="left:287px;top:16px;bottom:0"></div>
+            <div class="rl-v" style="left:20px;top:16px;height:60px"></div>
+            <div class="rl-chip" style="left:16px;top:12px">8</div>
+            <div class="rl-v" style="left:318px;top:26px;height:50px"></div>
+            <div class="rl-chip" style="left:318px;top:51px">50</div>
+
+            <div style="margin:0 12px">
+              <div class="u-card s">
+                <span class="u-pad"></span>
+                <span class="u-col"><b>Custom Expression</b><em>input.age &gt; 18 &amp;&amp; …</em></span>
+                <span class="u-ic" style="margin-left:auto"><span class="u-trash"></span></span>
+                <span class="u-pad"></span>
+              </div>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </div>
+
+    <div class="rl-toggle">
+      <label class="rl-switch">
+        <input type="checkbox" class="rl-toggle-input" data-key="cards" checked>
+        <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+      </label>
+      <span class="rl-toggle-label">Redlines &amp; specs (both cards)</span>
+    </div>
+
+    <div class="two-col" style="margin-top:20px">
+      <div>
+        <p class="sub">Used for</p>
+        <ul>
+          <li>Actions (Process Designer)</li>
+          <li>Event handlers</li>
+          <li>Validators</li>
+          <li>Data source options</li>
+        </ul>
+
+        <p class="sub">Layout</p>
+        <ul>
+          <li>Compact row: optional reorder handle, optional leading icon, title, trailing actions (add / delete), optional expand/collapse chevron.</li>
+          <li>Single line of text — some can carry small details inline.</li>
+        </ul>
+
+        <p class="sub">Behavior</p>
+        <ul>
+          <li><strong>Trigger:</strong> clicking anywhere on the row opens the item for editing — the whole row is the target, not a dedicated edit icon.</li>
+          <li><strong>Destination:</strong> opens in a side panel, with Cancel and Save at the panel level (not per row).</li>
+          <li><strong>Parent / child (Actions only):</strong> a parent action row can expand/collapse to reveal its child actions inline, using the Expanded variant. Editing still happens via the side panel for each individual row (parent or child) — expanding only reveals the nested rows, it isn't an edit action.</li>
+          <li><strong>Reordering &amp; removing:</strong> items can be dragged to reorder them via the grip handle (where order matters, like actions); each card carries its own delete control, shown on the card in edit mode.</li>
+        </ul>
+
+        <figure class="rl" style="margin-top:16px">
+          <p class="rl-t">Parent / child, expanded</p>
+          <div class="rl-stage" style="padding:16px 0 4px">
+            <div class="rl-v o" style="left:20px;top:50px;height:8px"></div>
+            <div class="rl-chip o" style="left:20px;top:54px">8</div>
+
+            <div style="margin:0 12px;display:flex;flex-direction:column;gap:8px">
+              <div class="u-card">
+                <span class="u-ic"><span class="u-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+                <span class="u-gap"></span>
+                <span>NewActionRename</span>
+                <span class="u-ctl" style="margin-left:auto">⌃</span>
+              </div>
+              <div class="u-card" style="margin-left:20px"><span>Business Rule</span></div>
+              <div class="u-card" style="margin-left:20px"><span>Child Action</span></div>
+            </div>
+          </div>
+        </figure>
+      </div>
+
+      <div>
+        <p class="sub">Used for</p>
+        <ul>
+          <li>Expressions</li>
+          <li>Permissions</li>
+        </ul>
+
+        <p class="sub">Layout</p>
+        <ul>
+          <li>Larger card than XS (greater height, same visual standard).</li>
+          <li>Contains a <strong>title</strong> and a <strong>preview / summary</strong> of the configuration detail (e.g. the first few words of the condition/expression) shown directly on the card.</li>
+          <li>No reorder handle, no parent/child nesting.</li>
+        </ul>
+
+        <p class="sub">Behavior</p>
+        <ul>
+          <li><strong>Trigger:</strong> clicking the card opens it for editing.</li>
+          <li><strong>Destination:</strong> usually opens a testing modal — but not always (some configs open straight into an edit view, with no test step).</li>
+          <li><strong>Summary content:</strong> always show a short, legible preview of the underlying condition/expression on the card face itself.</li>
+        </ul>
+
+        <details class="why" style="margin-top:16px">
+          <summary>Why the on-card preview?</summary>
+          <p>People open the card regardless, but a legible preview lets them scan and recognize items at a glance — without opening each one just to remember what it holds.</p>
+        </details>
+      </div>
+    </div>
+    </div><!-- /rlg-cards -->
+
+    <p style="margin-top:22px"><strong>Shared anatomy</strong> — everything below is the same for XS and S; only the height and the on-card preview differ.</p>
+    <table>
+      <thead><tr><th>Property</th><th>Spec</th></tr></thead>
+      <tbody>
+        <tr><td>Height</td><td>34px minimum for XS, 50px for S (both grow with content)</td></tr>
+        <tr><td>Inner padding</td><td>8px left/right</td></tr>
+        <tr><td>Gap between icon &amp; label</td><td>8px</td></tr>
+        <tr><td>Corner radius</td><td>8px</td></tr>
+        <tr><td>Border</td><td>1px, light neutral (#e3e8ed)</td></tr>
+        <tr><td>Text</td><td>12px, 18px line height</td></tr>
+        <tr>
+          <td>Resting</td>
+          <td><span class="pill idle">white, light border</span></td>
+        </tr>
+        <tr>
+          <td>Hover</td>
+          <td><span class="pill" style="background:#f7f8f9;color:#55606e;border:1px solid #cbd1db">faint grey fill, darker border</span> — signals the whole row is clickable</td>
+        </tr>
+        <tr>
+          <td>Selected / open</td>
+          <td><span class="pill" style="background:#e6f0fb;color:#006bd8;border:1px solid #006bd8">blue wash, blue border, blue label + icon</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="adding">
+    <h2><span class="num">6</span> Adding a new item</h2>
+    <div class="spec-split">
+    <div>
+
+    <p><strong>The add control</strong></p>
+    <ul>
+      <li>Every category adds new items the same way: a <strong>“+” button in the category header</strong>, aligned to the right edge of the cards below it.</li>
+      <li>The “+” only appears when you're in <strong>edit mode</strong> — it's hidden when you're just viewing.</li>
+      <li>A newly added item appears as a <strong>new card at the bottom of that category's list</strong>, ready to configure. If the list is longer than the visible area, the panel <strong>auto-scrolls to bring the new card into view</strong>.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>When a category is empty</strong></p>
+    <ul>
+      <li>Instead of a bare “+”, the category shows the DS <strong>empty state</strong>: a small dashed-circle icon, a bold <em>“No {items} yet”</em> title, and a one-line caption saying what those items do — centered in a thin bordered box.</li>
+      <li>In edit mode, a secondary <strong>“Add {item}”</strong> button sits below the caption; in a read-only view the box is the same but the button is left out, matching how add controls are hidden (not disabled) elsewhere.</li>
+      <li>Once the first item exists, the empty state is replaced by the list, and the header “+” takes over for adding more.</li>
+    </ul>
+
+    </div><!-- /left: prose -->
+
+    <aside class="spec-visual rl-group" id="rlg-adding">
+      <p class="vz-cap">Visual example</p>
+
+      <figure class="rl">
+        <p class="rl-t">"+" in the header — new item at the bottom</p>
+        <div class="rl-ui flat" style="margin:0 12px;border-radius:0">
+          <div class="u-cat" style="border-top:none;padding:0 8px">
+            Validators
+            <span style="margin-left:auto" class="u-ctl">+</span>
+            <span class="u-gap"></span>
+            <span class="u-ctl">⌃</span>
+          </div>
+          <div class="u-group" style="display:flex;flex-direction:column;gap:8px">
+            <div class="u-card"><span>Required</span></div>
+            <div class="u-card"><span>Max length</span></div>
+            <div class="u-card"><span>New validator</span></div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="rl" style="margin-top:20px">
+        <p class="rl-t">Empty category — edit mode</p>
+        <div class="rl-ui flat" style="margin:0 12px;border-radius:0">
+          <div class="u-cat" style="border-top:none;padding:0 8px">
+            Validators
+            <span style="margin-left:auto" class="u-ctl">+</span>
+            <span class="u-gap"></span>
+            <span class="u-ctl">⌃</span>
+          </div>
+          <div style="padding:8px 0">
+            <div class="u-empty">
+              <span class="u-empty-ic"></span>
+              <div class="u-empty-title">No validators yet</div>
+              <div class="u-empty-caption">Validators check a field's value before it's accepted.</div>
+              <button class="u-btn-sec" type="button">Add validator</button>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <div class="rl-toggle">
+        <label class="rl-switch">
+          <input type="checkbox" class="rl-toggle-input" data-key="adding" checked>
+          <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+        </label>
+        <span class="rl-toggle-label">Redlines &amp; specs</span>
+      </div>
+    </aside>
+
+    </div><!-- /spec-split -->
+
+    <div class="rationale">
+      <b>Why “+” in the header:</b> keeping the add affordance in one predictable spot — top-right of each category — means people never hunt for how to add something. The pattern reads identically whether they're adding an action, a rule, a stream, or a validator.
+    </div>
+  </section>
+
+  <section id="overlay">
+    <h2><span class="num">7</span> Action overlay</h2>
+
+    <aside class="spec-visual rl-group" id="rlg-overlay" style="margin-bottom:20px">
+      <p class="vz-cap">Visual example</p>
+
+      <figure class="rl" style="width:auto">
+        <p class="rl-t">Opens aligned to its trigger card</p>
+        <div class="u-wire-page">
+          <span class="u-wire-label">Page</span>
+          <div class="u-overlay" style="position:absolute;top:10px;right:138px">
+            <div class="u-ov-head">
+              <span>Run Local Script</span>
+              <span class="u-x">✕</span>
+            </div>
+            <div class="u-ov-body">
+              <div class="u-field" style="height:36px;color:#a6b0be">Script path</div>
+              <div class="u-field" style="height:36px;color:#a6b0be">Timeout (ms)</div>
+            </div>
+            <div class="u-ov-bar">
+              <span class="u-ov-actions">
+                <span class="u-btn-sec">Cancel</span>
+                <span class="u-btn-pri">Save</span>
+              </span>
+            </div>
+          </div>
+          <div class="u-wire-panel">
+            <div class="u-mini-card trigger">Run Local Script</div>
+            <div class="u-mini-card">Business Rule</div>
+            <div class="u-mini-card">Kafka Send</div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="rl" style="width:auto;margin-top:20px">
+        <p class="rl-t">Trigger near the bottom — anchored + scrollable</p>
+        <div class="u-wire-page">
+          <span class="u-wire-label">Page</span>
+          <div class="u-overlay" style="position:absolute;bottom:10px;right:138px">
+            <div class="u-ov-head">
+              <span>Send Notification</span>
+              <span class="u-x">✕</span>
+            </div>
+            <div class="u-ov-body scroll">
+              <span class="u-scroll-chip">scrolls</span>
+              <div class="u-field" style="height:36px;color:#a6b0be">Channel</div>
+              <div class="u-field" style="height:36px;color:#a6b0be">Recipient</div>
+              <div class="u-field" style="height:36px;color:#a6b0be">Message</div>
+              <div class="u-field" style="height:36px;color:#a6b0be">Template</div>
+            </div>
+            <div class="u-ov-bar">
+              <span class="u-ov-actions">
+                <span class="u-btn-sec">Cancel</span>
+                <span class="u-btn-pri">Save</span>
+              </span>
+            </div>
+          </div>
+          <div class="u-wire-panel">
+            <div class="u-mini-card">Business Rule</div>
+            <div class="u-mini-card">Kafka Send</div>
+            <div class="u-mini-card">Start Workflow</div>
+            <div class="u-mini-card">Upload File</div>
+            <div class="u-mini-card trigger">Send Notification</div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="rl" style="width:auto;margin-top:20px">
+        <p class="rl-t">Unsaved changes — nudges in place, doesn't move</p>
+        <div class="u-wire-page">
+          <span class="u-wire-label">Page</span>
+          <div class="u-overlay" style="position:absolute;top:10px;right:138px">
+            <div class="u-ov-head">
+              <span>Run Local Script</span>
+              <span class="u-x">✕</span>
+            </div>
+            <div class="u-ov-body">
+              <div class="u-field" style="height:36px;color:#1d232c">/scripts/validate.js</div>
+              <div class="u-field" style="height:36px;color:#a6b0be">Timeout (ms)</div>
+            </div>
+            <div class="u-ov-bar jiggle">
+              <span class="u-ov-warn">Unsaved changes<br>for this action</span>
+              <span class="u-ov-actions">
+                <span class="u-btn-sec">Cancel</span>
+                <span class="u-btn-pri">Save</span>
+              </span>
+            </div>
+          </div>
+          <div class="u-wire-panel">
+            <div class="u-mini-card trigger">Run Local Script</div>
+            <div class="u-mini-card">Business Rule</div>
+            <div class="u-mini-card">Kafka Send</div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- FIGURE — overlay anatomy: width, padding, gaps & radius -->
+      <figure class="rl" style="margin-top:20px">
+        <p class="rl-t">Overlay — width, padding, gaps &amp; radius</p>
+        <div class="rl-stage" style="padding:26px 0 20px 0">
+          <!-- overlay width -->
+          <div class="rl-h" style="left:70px;width:300px;top:8px"></div>
+          <div class="rl-v" style="left:70px;top:4px;height:9px"></div>
+          <div class="rl-v" style="left:370px;top:4px;height:9px"></div>
+          <div class="rl-chip" style="left:220px;top:8px">300px</div>
+
+          <!-- corner radius, top-right so it doesn't crowd the left column -->
+          <div class="rl-h" style="left:354px;width:16px;top:26px"></div>
+          <div class="rl-v" style="left:370px;top:26px;height:16px"></div>
+          <div class="rl-chip" style="left:370px;top:26px">r16</div>
+
+          <!-- header: side padding 12, shown as a strip along the left edge (same as Card XS) -->
+          <div class="rl-band" style="left:70px;width:12px;top:26px;height:34px"></div>
+          <div class="rl-v" style="left:76px;top:18px;height:8px"></div>
+          <div class="rl-chip" style="left:76px;top:16px">12</div>
+
+          <!-- header: top padding 10 (bottom is symmetric) -->
+          <div class="rl-band" style="left:70px;width:300px;top:26px;height:10px"></div>
+          <div class="rl-h" style="left:16px;width:54px;top:26px"></div>
+          <div class="rl-v" style="left:16px;top:26px;height:10px"></div>
+          <div class="rl-chip" style="left:16px;top:31px">10</div>
+
+          <!-- body: same 12px side padding, shown once via the strip only -->
+          <div class="rl-band" style="left:70px;width:12px;top:60px;height:104px"></div>
+
+          <!-- body: top padding 12 (bottom is symmetric) -->
+          <div class="rl-band" style="left:70px;width:300px;top:60px;height:12px"></div>
+          <div class="rl-h" style="left:16px;width:54px;top:60px"></div>
+          <div class="rl-v" style="left:16px;top:60px;height:12px"></div>
+          <div class="rl-chip" style="left:16px;top:66px">12</div>
+
+          <!-- body: gap between fields 8 -->
+          <div class="rl-band o" style="left:70px;width:300px;top:108px;height:8px"></div>
+          <div class="rl-h o" style="left:16px;width:54px;top:108px"></div>
+          <div class="rl-v o" style="left:16px;top:108px;height:8px"></div>
+          <div class="rl-chip o" style="left:16px;top:112px">8</div>
+
+          <!-- buttons area: same 12px side padding, shown once via the strip only -->
+          <div class="rl-band" style="left:70px;width:12px;top:164px;height:46px"></div>
+
+          <!-- buttons area: bar padding 10 (bottom is symmetric) -->
+          <div class="rl-band" style="left:70px;width:300px;top:164px;height:10px"></div>
+          <div class="rl-h" style="left:16px;width:54px;top:164px"></div>
+          <div class="rl-v" style="left:16px;top:164px;height:10px"></div>
+          <div class="rl-chip" style="left:16px;top:169px">10</div>
+
+          <!-- buttons area: button height 26 (the buttons themselves are already visible) -->
+          <div class="rl-h" style="left:40px;width:30px;top:174px"></div>
+          <div class="rl-v" style="left:40px;top:174px;height:26px"></div>
+          <div class="rl-chip" style="left:40px;top:187px">26</div>
+
+          <!-- gap between Cancel and Save (buttons given fixed widths here so the gap is exact) -->
+          <div class="rl-v o" style="left:300px;top:174px;height:26px"></div>
+          <div class="rl-v o" style="left:308px;top:174px;height:26px"></div>
+          <div class="rl-chip o" style="left:304px;top:187px">8</div>
+
+          <div class="u-overlay" style="position:relative;margin-left:70px">
+            <div class="u-ov-head" style="height:34px">
+              <span>Run Local Script</span>
+              <span class="u-x">✕</span>
+            </div>
+            <div class="u-ov-body">
+              <div class="u-field" style="height:36px;color:#a6b0be">Script path</div>
+              <div class="u-field" style="height:36px;color:#a6b0be">Timeout (ms)</div>
+            </div>
+            <div class="u-ov-bar">
+              <span class="u-ov-actions">
+                <span class="u-btn-sec" style="width:56px;text-align:center">Cancel</span>
+                <span class="u-btn-pri" style="width:50px;text-align:center">Save</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <ul class="rl-key">
+        <li><i style="background:#006bd8"></i> size &amp; padding</li>
+        <li><i style="background:#fd6b1c"></i> gap between items</li>
+      </ul>
+
+      <div class="rl-toggle">
+        <label class="rl-switch">
+          <input type="checkbox" class="rl-toggle-input" data-key="overlay" checked>
+          <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+        </label>
+        <span class="rl-toggle-label">Redlines &amp; specs</span>
+      </div>
+    </aside>
+
+    <p>Clicking an action in the list opens its full configuration in a <strong>floating card beside the panel</strong> — the action list stays visible in the panel, and the card opens just to its left.</p>
+    <ul>
+      <li>The card has its own <strong>header</strong> (the action's name + a close ✕) and a scrollable body holding the action's settings.</li>
+      <li>It's a raised surface — rounded corners and a soft drop shadow — so it clearly floats above the canvas and panel.</li>
+      <li>Its width matches the side panel's default — <strong>300px</strong> — so the pair reads as two panels of equal weight rather than a big panel with a narrow flyout tacked on. The other floating cards beside a 300px panel (the data-stream overlay, the UI‑designer's equivalent overlay) share the same 300px width for the same reason.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>Opening — aligned to its trigger</strong></p>
+    <ul>
+      <li>The overlay's <strong>top edge aligns with the top edge of the action card</strong> that opened it, so it reads as attached to that row rather than floating anywhere on screen.</li>
+      <li>If aligning to the trigger would push the overlay <strong>past the bottom of the visible area</strong> — because the trigger sits low in a long list — the overlay instead <strong>anchors to the bottom</strong> of the panel, and its body becomes <strong>scrollable</strong> so the rest of its content stays reachable.</li>
+    </ul>
+
+    <p style="margin-top:16px"><strong>Saving — explicit, unlike the panel</strong></p>
+    <ul>
+      <li>The main panel autosaves, but the overlay does <strong>not</strong>. It has an explicit <strong>Save</strong> in a bar pinned to the bottom of the card, alongside <strong>Cancel</strong>.</li>
+      <li><strong>Save</strong> commits the changes and <strong>closes the overlay</strong> in one step. If a required field is empty, it doesn't close — it jumps to and highlights the first problem field instead.</li>
+      <li><strong>Cancel</strong> closes the overlay and discards the edits.</li>
+    </ul>
+    <details class="why">
+      <summary>Why explicit here?</summary>
+      <p>An action is a deeper, more deliberate edit than a quick field tweak. A clear Save / Cancel gives people a definite “commit” moment and an easy way out — while the lightweight panel around it keeps autosaving.</p>
+    </details>
+
+    <p style="margin-top:16px"><strong>Unsaved changes — gently blocking, no modal</strong></p>
+    <ul>
+      <li>While the overlay has unsaved edits, it <strong>holds its ground</strong>: clicking a different action, clicking outside the card, or selecting another node on the canvas <strong>won't switch away</strong> — the panel underneath stays put.</li>
+      <li>Instead of interrupting with a “discard changes?” dialog, the card <strong>draws attention to itself</strong>: a red <em>“Unsaved changes for this action”</em> notice appears in the save bar, and the bar does a brief <strong>left-right jiggle</strong> (about 0.6s, settling as it goes) to point you at Save / Cancel.</li>
+      <li>Each further blocked attempt <strong>replays the jiggle</strong>, so the nudge is always fresh.</li>
+      <li>Only real edits count — simply opening an action or letting it load never marks it as unsaved.</li>
+    </ul>
+    <details class="why">
+      <summary>Why a nudge instead of a dialog?</summary>
+      <p>A confirmation modal on every stray click gets tiring fast. Pinning the panel and animating the save bar makes the unsaved state obvious and keeps the decision — save or cancel — right where the user's attention already is.</p>
+    </details>
+  </section>
+
+  <section id="spacing">
+    <h2><span class="num">8</span> Spacing &amp; sizing</h2>
+    <p>The panel is built on an <strong>8-point rhythm</strong> — most gaps and paddings are multiples of 4/8px.</p>
+
+    <div class="spec-split">
+    <div>
+
+    <p><strong>The panel &amp; header</strong></p>
+    <table>
+      <thead><tr><th>Element</th><th>Spec</th></tr></thead>
+      <tbody>
+        <tr><td>Panel width</td><td>300px default</td></tr>
+        <tr><td>Header padding</td><td>16px left/right, 6px top/bottom</td></tr>
+        <tr><td>Gap between header items</td><td>8px</td></tr>
+        <tr><td>Title</td><td>12px text, 20px line height, semibold</td></tr>
+        <tr><td>“More” button (three dots)</td><td>24px tap target</td></tr>
+        <tr><td>Close button</td><td>24px tap target</td></tr>
+      </tbody>
+    </table>
+
+    </div><!-- /left: tables -->
+
+    <aside class="spec-visual rl-group" id="rlg-spacing-panel">
+      <p class="vz-cap">Visual example</p>
+
+      <figure class="rl">
+        <p class="rl-t">Panel width &amp; content inset</p>
+        <div class="rl-stage" style="padding-top:26px">
+        <div class="rl-h" style="left:0;width:300px;top:8px"></div>
+        <div class="rl-v" style="left:0;top:4px;height:9px"></div>
+        <div class="rl-v" style="left:299px;top:4px;height:9px"></div>
+        <div class="rl-chip" style="left:150px;top:8px">300px</div>
+
+        <div class="rl-v" style="left:0;top:20px;bottom:0"></div>
+        <div class="rl-v" style="left:299px;top:20px;bottom:0"></div>
+        <div class="rl-v" style="left:12px;top:20px;bottom:0"></div>
+        <div class="rl-v" style="left:287px;top:20px;bottom:0"></div>
+        <div class="rl-chip" style="left:12px;top:26px">12</div>
+        <div class="rl-chip" style="left:287px;top:26px">12</div>
+
+        <div class="rl-ui">
+          <div class="u-head">
+            <span class="u-t">Attribute Settings</span>
+            <span class="u-dots"><i></i><i></i><i></i></span>
+            <span class="u-x">✕</span>
+          </div>
+          <div class="u-body">
+            <div class="u-cat">Properties<span style="margin-left:auto" class="u-ctl">⌄</span></div>
+            <div class="u-cat">Event Handlers<span style="margin-left:auto" class="u-ctl">+</span><span class="u-ctl">⌃</span></div>
+            <div class="u-group" style="display:flex;flex-direction:column;gap:8px">
+              <div class="u-card"><span>action001</span></div>
+              <div class="u-card sel"><span>Run Local Script</span></div>
+            </div>
+            <div class="u-cat">Datasource<span style="margin-left:auto" class="u-ctl">⌄</span></div>
+            <div class="u-cat">Validators<span style="margin-left:auto" class="u-ctl">⌄</span></div>
+          </div>
+        </div>
+        </div>
+      </figure>
+
+      <ul class="rl-key">
+        <li><i style="background:#006bd8"></i> size &amp; padding</li>
+        <li><i style="background:#fd6b1c"></i> gap between items</li>
+      </ul>
+
+      <div class="rl-toggle">
+        <label class="rl-switch">
+          <input type="checkbox" class="rl-toggle-input" data-key="spacing-panel" checked>
+          <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+        </label>
+        <span class="rl-toggle-label">Redlines &amp; specs</span>
+      </div>
+    </aside>
+
+    </div><!-- /spec-split -->
+
+    <div class="spec-split" style="margin-top:20px">
+    <div>
+
+    <p><strong>The content area</strong></p>
+    <table>
+      <thead><tr><th>Element</th><th>Spec</th></tr></thead>
+      <tbody>
+        <tr><td>Content side padding</td><td>12px in from each edge</td></tr>
+        <tr><td>Category header height</td><td>42px (collapsed)</td></tr>
+        <tr><td>Gap between items (cards)</td><td>8px, stacked vertically</td></tr>
+        <tr><td>Input / select field height</td><td>46px</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:18px"><strong>Inside a group</strong> — the padding around a set of cards or fields</p>
+    <table>
+      <thead><tr><th>Edge</th><th>Spec</th></tr></thead>
+      <tbody>
+        <tr><td>Left / right</td><td>12px</td></tr>
+        <tr><td>Top</td><td>4px</td></tr>
+        <tr><td>Bottom</td><td>8px</td></tr>
+        <tr><td>Between items</td><td>8px</td></tr>
+      </tbody>
+    </table>
+
+    </div><!-- /left: tables -->
+
+    <aside class="spec-visual rl-group" id="rlg-spacing-cards">
+      <p class="vz-cap">Visual example</p>
+
+      <figure class="rl">
+        <p class="rl-t">Cards, gaps &amp; fields</p>
+        <div class="rl-stage" style="padding:26px 0 4px">
+        <div class="rl-v" style="left:12px;top:16px;bottom:0"></div>
+        <div class="rl-v" style="left:287px;top:16px;bottom:0"></div>
+        <div class="rl-v" style="left:20px;top:16px;height:44px"></div>
+        <div class="rl-chip" style="left:16px;top:12px">8</div>
+
+        <div class="rl-v" style="left:318px;top:26px;height:34px"></div>
+        <div class="rl-chip" style="left:318px;top:43px">34</div>
+        <div class="rl-v" style="left:318px;top:110px;height:46px"></div>
+        <div class="rl-chip" style="left:318px;top:133px">46</div>
+        <div class="rl-h o" style="left:12px;width:276px;top:60px"></div>
+        <div class="rl-h o" style="left:12px;width:276px;top:68px"></div>
+        <div class="rl-chip o" style="left:-4px;top:64px">8</div>
+
+        <div style="margin:0 12px;display:flex;flex-direction:column">
+          <div class="u-card"><span class="u-pad"></span><span>Set a value</span></div>
+          <div class="u-vgap"></div>
+          <div class="u-card sel"><span>Selected item</span></div>
+          <div class="u-vgap"></div>
+          <div class="u-field">Select a value</div>
+        </div>
+        </div>
+      </figure>
+
+      <ul class="rl-key">
+        <li><i style="background:#006bd8"></i> size &amp; padding</li>
+        <li><i style="background:#fd6b1c"></i> gap between items</li>
+      </ul>
+
+      <div class="rl-toggle">
+        <label class="rl-switch">
+          <input type="checkbox" class="rl-toggle-input" data-key="spacing-cards" checked>
+          <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+        </label>
+        <span class="rl-toggle-label">Redlines &amp; specs</span>
+      </div>
+    </aside>
+
+    </div><!-- /spec-split -->
+  </section>
+
+  <section id="tokens">
+    <h2><span class="num">9</span> Type &amp; color</h2>
+    <p>The panel leans on a small, repeated set of type styles and neutrals — the same tokens across every category, card, and field.</p>
+
+    <p><strong>Type</strong> — all Open Sans</p>
+    <table>
+      <thead><tr><th>Role</th><th>Style</th></tr></thead>
+      <tbody>
+        <tr><td>Category name</td><td>Caption / Semi Bold — 12px, 18px line, SemiBold</td></tr>
+        <tr><td>Grouping sub-label</td><td>Footer / Semi Bold — 10px, 16px line, SemiBold</td></tr>
+        <tr><td>Card label &amp; field text</td><td>Caption — 12px, 18px line, Regular</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:18px"><strong>Color</strong></p>
+    <table>
+      <thead><tr><th>&nbsp;</th><th>Role</th><th>Token</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:#0F1114;outline:1px solid #ccc"></span></td><td>Primary text / category names</td><td>Neutrals-900 · #0F1114</td></tr>
+        <tr><td><span class="dot" style="background:#64748B"></span></td><td>Secondary text / grouping labels / values</td><td>Neutrals-500 · #64748B</td></tr>
+        <tr><td><span class="dot" style="background:#A6B0BE"></span></td><td>Muted / placeholder</td><td>Neutrals-300 · #A6B0BE</td></tr>
+        <tr><td><span class="dot" style="background:#E3E8ED;outline:1px solid #ccc"></span></td><td>Card &amp; field borders</td><td>Neutrals-100 · #E3E8ED</td></tr>
+        <tr><td><span class="dot" style="background:#FFFFFF;outline:1px solid #ccc"></span></td><td>Surfaces</td><td>White · #FFFFFF</td></tr>
+        <tr><td><span class="dot" style="background:#006BD8"></span></td><td>Selected / active accent</td><td>Blue-500 · #006BD8</td></tr>
+        <tr><td><span class="dot" style="background:#E6F0FB;outline:1px solid #ccc"></span></td><td>Selected fill</td><td>Blue-50 · #E6F0FB</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:18px"><strong>Radius &amp; elevation</strong></p>
+    <table>
+      <thead><tr><th>Role</th><th>Spec</th></tr></thead>
+      <tbody>
+        <tr><td>Card / field corners</td><td>8px</td></tr>
+        <tr><td>Floating overlay corners</td><td>16px</td></tr>
+        <tr><td>Overlay shadow (Shadow M)</td><td>drop shadow, offset (2, 2), blur 24</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="page">
+    Process side panel · behavior + design spec · patterns drawn from “5.9 Rendering” (Figma) and the live prototype
+  </footer>
+
+</div>
+
+<script>
+  // Turn every section into an expand/collapse accordion.
+  document.querySelectorAll('section > h2').forEach(function (h2) {
+    var caret = document.createElement('span');
+    caret.className = 'caret';
+    caret.textContent = '⌄';
+    caret.setAttribute('aria-hidden', 'true');
+    h2.appendChild(caret);
+    h2.setAttribute('role', 'button');
+    h2.setAttribute('tabindex', '0');
+    h2.addEventListener('click', function () {
+      h2.parentElement.classList.toggle('collapsed');
+    });
+    h2.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        h2.parentElement.classList.toggle('collapsed');
+      }
+    });
+  });
+
+  // A TOC link always reveals its target section.
+  function expandTarget() {
+    var id = location.hash.slice(1);
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (el && el.tagName.toLowerCase() === 'section') el.classList.remove('collapsed');
+  }
+  document.querySelectorAll('.toc a').forEach(function (a) {
+    a.addEventListener('click', function () { setTimeout(expandTarget, 0); });
+  });
+  window.addEventListener('hashchange', expandTarget);
+
+  // Redlines & specs toggles — one per visual-example area. Always ON by default on load;
+  // switch off per area if you want to see that area's plain state. Not persisted across reloads.
+  document.querySelectorAll('.rl-toggle-input').forEach(function (input) {
+    var key = input.dataset.key;
+    var group = document.getElementById('rlg-' + key);
+    if (!group) return;
+    input.checked = true;
+    function apply() {
+      group.classList.toggle('redlines-off', !input.checked);
+    }
+    apply();
+    input.addEventListener('change', apply);
+  });
+</script>
+</body>
+</html>
