@@ -77,6 +77,11 @@
     transition: all .15s ease;
   }
   .toc a:hover { color: var(--accent); border-color: var(--accent); }
+  p a.ds-link, li a.ds-link, td a.ds-link {
+    color: var(--accent); text-decoration: underline;
+    text-decoration-color: rgba(37,99,235,.35); text-underline-offset: 2px;
+  }
+  p a.ds-link:hover, li a.ds-link:hover, td a.ds-link:hover { text-decoration-color: currentColor; }
   section {
     background: var(--card);
     border: 1px solid var(--line);
@@ -227,7 +232,7 @@
   /* --- the UI being measured — real FlowX DS foundation tokens, not approximations ---
      surfaces: white / neutrals-50 #f7f8f9 · borders: neutrals-100 #e3e8ed · muted icons: neutrals-400 #8390a2
      primary text: neutrals-900 #1d232c · secondary text: neutrals-500 #64748b · selected: blue-500 #006bd8 / blue-50 #e6f0fb
-     type: Open Sans, Caption preset 12px/18px (see §9 Type & color) */
+     type: Open Sans, Caption preset 12px/18px (see §9 Typography) */
   .rl-ui {
     position: relative;
     z-index: 1;
@@ -286,6 +291,18 @@
   }
   .u-btn { width: 24px; height: 24px; display: grid; place-items: center; flex-shrink: 0; border-radius: 8px; }
   .u-btn .u-dots { margin-left: 0; }
+  .u-btn.sel { background: #f0f2f4; }
+  /* "More" dropdown — DS dropdown-panel skin, Shadow S (elevation.json) */
+  .u-menu {
+    width: 168px; background: #fff; border: 1px solid #e3e8ed; border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(22,52,98,.1);
+    font-size: 12px; line-height: 18px; color: #1d232c; overflow: hidden;
+  }
+  .u-menu-item { padding: 8px 12px; }
+  .u-menu-item + .u-menu-item { border-top: 1px solid #e3e8ed; }
+  .u-menu-item.danger { color: #e62200; }
+  /* Unsaved-in-modal marker — orange-500 (colors.json), sits inline before trailing controls */
+  .u-dot-unsaved { width: 6px; height: 6px; border-radius: 50%; background: #fd6b1c; flex-shrink: 0; display: inline-block; }
   .rl-tgt {
     position: absolute; width: 24px; height: 24px;
     border: 1px dashed #006bd8; border-radius: 5px; z-index: 3; opacity: .85;
@@ -295,7 +312,7 @@
     border: 1px solid #e3e8ed; border-radius: 8px; color: #64748b; font-size: 12px;
   }
   .u-group { padding: 4px 0 8px; }
-  /* Grouping sub-label — Footer/Semi Bold 10px/16px (see §9 Type & color), quieter than a category name */
+  /* Grouping sub-label — Footer/Semi Bold 10px/16px (see §9 Typography), quieter than a category name */
   .u-glabel { font-size: 10px; line-height: 16px; font-weight: 600; color: #64748b; padding: 0 0 4px; }
   /* Empty-category state — DS empty-state pattern (medium): dashed-circle icon,
      bold title, caption, optional secondary CTA — centered in a bordered box.
@@ -311,7 +328,7 @@
   .u-empty-title { margin-top: 8px; font-size: 14px; line-height: 24px; font-weight: 700; color: #1d232c; }
   .u-empty-caption { margin-top: 4px; font-size: 12px; line-height: 16px; color: #64748b; }
   .u-empty .u-btn-sec { margin-top: 16px; }
-  /* Action overlay — floating card beside the panel (§7), radius 16 / Shadow M per §9 */
+  /* Action overlay — floating card beside the panel (§7), radius 16 / Shadow M per §10 */
   .u-overlay {
     position: relative;
     width: 300px; background: #fff; border-radius: 16px;
@@ -574,7 +591,8 @@
       <a href="#adding">6 · Adding a new item</a>
       <a href="#overlay">7 · Action overlay</a>
       <a href="#spacing">8 · Spacing &amp; sizing</a>
-      <a href="#tokens">9 · Type &amp; color</a>
+      <a href="#typography">9 · Typography</a>
+      <a href="#tokens">10 · Color &amp; elevation</a>
     </nav>
   </header>
 
@@ -601,6 +619,12 @@
       <li>Click an empty part of the canvas (deselecting the node).</li>
     </ul>
     <p>Closing also clears the node selection, so the canvas returns to a clean, nothing-selected state.</p>
+
+    <p style="margin-top:16px"><strong>Exception — UI designer</strong></p>
+    <ul>
+      <li>The UI designer's settings panel is <strong>always present</strong> — there's no canvas state with nothing selected, so the panel has no “closed” state to return to.</li>
+      <li>None of the closing triggers above apply there: no close button in the header (see §2), and clicking empty canvas doesn't dismiss it.</li>
+    </ul>
   </section>
 
   <section id="header">
@@ -625,7 +649,8 @@
     <ul>
       <li>A <strong>“More” button</strong> — three dots stacked vertically — holding the actions that belong to the whole thing you're editing — rather than to one field inside it. Clicking it drops a small menu open beneath it.</li>
       <li>A <strong>close (✕)</strong> button, always last so it sits in the same corner everywhere.</li>
-      <li>Both are <strong>24px</strong> targets with a light grey hover, spaced 8px apart.</li>
+      <li>Both are the <a class="ds-link" href="https://flowx-ai.github.io/FlowX-Design-System/" target="_blank" rel="noopener">DS</a> <strong>Button</strong>, size <strong>XS</strong> (24px), Tertiary, icon only, with a light grey hover — spaced 8px apart.</li>
+      <li><strong>Exception — UI designer:</strong> its panel can never close (see §1), so the close button doesn't render at all — only the More button shows, and only when it has items.</li>
     </ul>
 
     <p style="margin-top:16px"><strong>What goes in the More menu</strong></p>
@@ -681,6 +706,23 @@
               <span class="u-btn" style="margin-left:auto"><span class="u-dots"><i></i><i></i><i></i></span></span>
               <span class="u-btn"><span class="u-x">✕</span></span>
             </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- FIGURE — More menu open, data model example -->
+      <figure class="rl" style="margin-top:20px">
+        <p class="rl-t">More menu open — data model attribute</p>
+        <div class="rl-ui" style="position:relative">
+          <div class="u-head">
+            <span class="u-ic"><span class="u-sq"></span></span>
+            <span class="u-t">Attribute Settings</span>
+            <span class="u-btn sel" style="margin-left:auto"><span class="u-dots"><i></i><i></i><i></i></span></span>
+            <span class="u-btn"><span class="u-x">✕</span></span>
+          </div>
+          <div class="u-menu" style="position:absolute;right:8px;top:38px;z-index:2">
+            <div class="u-menu-item">View references</div>
+            <div class="u-menu-item danger">Delete</div>
           </div>
         </div>
       </figure>
@@ -1098,6 +1140,19 @@
         </tr>
       </tbody>
     </table>
+
+    <p style="margin-top:22px"><strong>Fields — sourced from the DS</strong></p>
+    <p>Every input and select inside the panel is the <a class="ds-link" href="https://flowx-ai.github.io/FlowX-Design-System/" target="_blank" rel="noopener">FlowX DS</a> <strong>Input Field</strong> / <strong>Select Field</strong> component, size <strong>small</strong> — not a custom-built field.</p>
+    <table>
+      <thead><tr><th>Property</th><th>DS default (small)</th><th>Used here</th></tr></thead>
+      <tbody>
+        <tr><td>Container height</td><td>28px</td><td>28px — unchanged</td></tr>
+        <tr><td>Label</td><td>12px / 16px line, <strong>SemiBold</strong></td><td>12px / 16px line, <strong>Regular</strong> — the one override</td></tr>
+      </tbody>
+    </table>
+    <div class="open-q">
+      <b>Open topic — reconciling with §8's field height:</b> §8's spacing spec still lists a 46px input/select height, carried over from before fields were mapped to the DS. Adopting the DS small field (28px) supersedes that number; the redline figures in §8 need to be redrawn to 28px once this is confirmed.
+    </div>
   </section>
 
   <section id="adding">
@@ -1114,7 +1169,7 @@
 
     <p style="margin-top:16px"><strong>When a category is empty</strong></p>
     <ul>
-      <li>Instead of a bare “+”, the category shows the DS <strong>empty state</strong>: a small dashed-circle icon, a bold <em>“No {items} yet”</em> title, and a one-line caption saying what those items do — centered in a thin bordered box.</li>
+      <li>Instead of a bare “+”, the category shows the <a class="ds-link" href="https://flowx-ai.github.io/FlowX-Design-System/patterns/empty-states" target="_blank" rel="noopener">DS empty state</a>: a small dashed-circle icon, a bold <em>“No {items} yet”</em> title, and a one-line caption saying what those items do — centered in a thin bordered box.</li>
       <li>In edit mode, a secondary <strong>“Add {item}”</strong> button sits below the caption; in a read-only view the box is the same but the button is left out, matching how add controls are hidden (not disabled) elsewhere.</li>
       <li>Once the first item exists, the empty state is replaced by the list, and the header “+” takes over for adding more.</li>
     </ul>
@@ -1401,6 +1456,31 @@
       <summary>Why a nudge instead of a dialog?</summary>
       <p>A confirmation modal on every stray click gets tiring fast. Pinning the panel and animating the save bar makes the unsaved state obvious and keeps the decision — save or cancel — right where the user's attention already is.</p>
     </details>
+
+    <p style="margin-top:16px"><strong>Unsaved changes from a nested modal — an orange dot</strong></p>
+    <ul>
+      <li>Some cards inside the overlay open their <strong>own modal</strong> to edit further (e.g. the testing modal a Card S expression opens, per §5). Closing that modal carries the edit back into the overlay as a draft — it isn't part of the node's saved data until the overlay's own <strong>Save</strong> commits it.</li>
+      <li>Each card holding one of these drafts shows a small <strong>orange dot</strong> — inline, right before its trailing icon — for as long as that draft hasn't been committed.</li>
+      <li>It's deliberately quieter than the save bar's red notice: the red bar-level notice means <em>the whole overlay</em> has something unsaved; the orange dot means <em>this specific card</em> is the reason why, which matters once more than one card in the list has been touched through its modal.</li>
+      <li>Saving or cancelling the overlay clears every dot at once, along with the rest of its draft state.</li>
+    </ul>
+
+    <figure class="rl" style="margin-top:16px">
+      <p class="rl-t">Card with a pending edit from its own modal</p>
+      <div class="u-overlay" style="width:auto">
+        <div class="u-ov-body" style="padding:12px">
+          <div class="u-card"><span class="u-pad"></span><span>Required</span></div>
+          <div class="u-card s">
+            <span class="u-pad"></span>
+            <span class="u-col"><b>Custom Expression</b><em>input.age &gt; 18 &amp;&amp; …</em></span>
+            <span class="u-dot-unsaved" style="margin-left:auto"></span>
+            <span class="u-gap"></span>
+            <span class="u-ic"><span class="u-trash"></span></span>
+            <span class="u-pad"></span>
+          </div>
+        </div>
+      </div>
+    </figure>
   </section>
 
   <section id="spacing">
@@ -1552,21 +1632,79 @@
     </div><!-- /spec-split -->
   </section>
 
-  <section id="tokens">
-    <h2><span class="num">9</span> Type &amp; color</h2>
-    <p>The panel leans on a small, repeated set of type styles and neutrals — the same tokens across every category, card, and field.</p>
+  <section id="typography">
+    <h2><span class="num">9</span> Typography</h2>
+    <div class="spec-split">
+    <div>
 
-    <p><strong>Type</strong> — all Open Sans</p>
+    <p>Five roles cover every label in the panel — all Open Sans, all quiet enough not to compete with the content they're labeling.</p>
+
     <table>
       <thead><tr><th>Role</th><th>Style</th></tr></thead>
       <tbody>
+        <tr><td>Header title</td><td>Caption / Semi Bold — 12px, 20px line, SemiBold</td></tr>
         <tr><td>Category name</td><td>Caption / Semi Bold — 12px, 18px line, SemiBold</td></tr>
-        <tr><td>Grouping sub-label</td><td>Footer / Semi Bold — 10px, 16px line, SemiBold</td></tr>
+        <tr><td>Subtitle in category (grouping sub-label)</td><td>Footer / Semi Bold — 10px, 16px line, SemiBold</td></tr>
         <tr><td>Card label &amp; field text</td><td>Caption — 12px, 18px line, Regular</td></tr>
+        <tr><td>Field label (<a class="ds-link" href="https://flowx-ai.github.io/FlowX-Design-System/" target="_blank" rel="noopener">DS</a> Input/Select, small)</td><td>Caption — 12px, 16px line, Regular <em>(DS default is SemiBold — overridden here, see §5)</em></td></tr>
       </tbody>
     </table>
 
-    <p style="margin-top:18px"><strong>Color</strong></p>
+    </div><!-- /left: prose -->
+
+    <aside class="spec-visual rl-group" id="rlg-typography">
+      <p class="vz-cap">Visual example</p>
+
+      <figure class="rl">
+        <p class="rl-t">All five roles, in context</p>
+        <div class="rl-ui flat" style="margin:0;border-radius:8px;border:1px solid #e3e8ed">
+          <div class="u-head">
+            <span class="u-ic"><span class="u-sq"></span></span>
+            <span class="u-t">Header title</span>
+            <span class="u-btn" style="margin-left:auto"><span class="u-dots"><i></i><i></i><i></i></span></span>
+            <span class="u-btn"><span class="u-x">✕</span></span>
+          </div>
+          <div class="u-tabs">
+            <span class="u-tab active">Actions</span>
+            <span class="u-tab">Node Config</span>
+          </div>
+          <div class="u-cat" style="border-top:none;padding:0 12px">Category Name<span style="margin-left:auto" class="u-ctl">⌃</span></div>
+          <div class="u-group" style="display:flex;flex-direction:column;gap:8px;padding:4px 12px 8px">
+            <div class="u-glabel">Subtitle categories</div>
+            <div class="u-card"><span>Countries</span></div>
+            <div class="u-card"><span>Currencies</span></div>
+            <div style="margin-top:4px;display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:12px;line-height:16px;font-weight:400;color:#1d232c">Field label</label>
+              <div style="height:28px;display:flex;align-items:center;padding:0 8px;border:1px solid #e3e8ed;border-radius:8px;color:#a6b0be;font-size:12px;line-height:16px">Value</div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#8390a2;margin:10px 0 0">
+          <strong style="color:#55606e">Header title</strong> ·
+          <strong style="color:#55606e">Category name</strong> “Category Name” ·
+          <strong style="color:#55606e">Subtitle in category</strong> “Subtitle categories” ·
+          <strong style="color:#55606e">Card label</strong> “Countries”, “Currencies” ·
+          <strong style="color:#55606e">Field label</strong> “Field label” — DS Input Field, small, Regular
+        </p>
+      </figure>
+
+      <div class="rl-toggle">
+        <label class="rl-switch">
+          <input type="checkbox" class="rl-toggle-input" data-key="typography" checked>
+          <span class="rl-switch-track"><span class="rl-switch-thumb"></span></span>
+        </label>
+        <span class="rl-toggle-label">Redlines &amp; specs</span>
+      </div>
+    </aside>
+
+    </div><!-- /spec-split -->
+  </section>
+
+  <section id="tokens">
+    <h2><span class="num">10</span> Color &amp; elevation</h2>
+    <p>The panel leans on a small, repeated set of neutrals and elevation values, sourced from the <a class="ds-link" href="https://flowx-ai.github.io/FlowX-Design-System/" target="_blank" rel="noopener">FlowX Design System</a> — the same tokens across every category, card, and field.</p>
+
+    <p><strong>Color</strong></p>
     <table>
       <thead><tr><th>&nbsp;</th><th>Role</th><th>Token</th></tr></thead>
       <tbody>
@@ -1587,6 +1725,18 @@
         <tr><td>Card / field corners</td><td>8px</td></tr>
         <tr><td>Floating overlay corners</td><td>16px</td></tr>
         <tr><td>Overlay shadow (Shadow M)</td><td>drop shadow, offset (2, 2), blur 24</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:18px"><strong>Buttons</strong> — every button in the panel is the <a class="ds-link" href="https://flowx-ai.github.io/FlowX-Design-System/" target="_blank" rel="noopener">DS</a> <strong>Button</strong> component, never a custom one-off</p>
+    <table>
+      <thead><tr><th>Role</th><th>DS size</th><th>Variant</th></tr></thead>
+      <tbody>
+        <tr><td>Header “More” &amp; close (§2)</td><td>XS — 24px, icon only</td><td>Tertiary</td></tr>
+        <tr><td>Category “+” (§6)</td><td>XS — 24px, icon only</td><td>Tertiary</td></tr>
+        <tr><td>Empty-category “Add {item}” (§6)</td><td>Small — 28px</td><td>Secondary</td></tr>
+        <tr><td>Overlay Save (§7)</td><td>Small — 28px</td><td>Primary</td></tr>
+        <tr><td>Overlay Cancel (§7)</td><td>Small — 28px</td><td>Tertiary</td></tr>
       </tbody>
     </table>
   </section>
